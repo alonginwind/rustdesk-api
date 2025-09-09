@@ -4,6 +4,9 @@ go 1.23
 
 toolchain go1.23.10
 
+require github.com/lejianwen/rustdesk-api/v2 v2.6.28
+replace github.com/lejianwen/rustdesk-api/v2 => github.com/alonginwind/rustdesk-api/v2 main
+
 require (
 	github.com/BurntSushi/toml v1.3.2
 	github.com/antonfisher/nested-logrus-formatter v1.3.1

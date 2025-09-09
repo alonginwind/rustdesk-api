@@ -16,9 +16,9 @@ on:
         required: false
         default: ''
       SKIP_DOCKER_HUB:
-        description: 'Set to true to skip pushing to Docker Hub (default: false)'
+        description: 'Set to true to skip pushing to Docker Hub (default: true)'
         required: false
-        default: 'false'
+        default: 'true'
       SKIP_GHCR:
         description: 'Set to true to skip pushing to GHCR (default: false)'
         required: false
@@ -26,7 +26,7 @@ on:
       WEBCLIENT_SOURCE_LOCATION:
         description: 'Web Client API Repository'
         required: true
-        default: 'https://github.com/lejianwen/rustdesk-api-web'
+        default: 'https://github.com/alonginwind/rustdesk-api-web'
   push:
     tags:
       - 'v*.*.*'  # 当推送带有版本号的 tag（例如 v1.0.0）时触发工作流
@@ -34,11 +34,11 @@ on:
 
 env:
   LATEST_TAG: latest
-  WEBCLIENT_SOURCE_LOCATION: ${{ github.event.inputs.WEBCLIENT_SOURCE_LOCATION || 'https://github.com/lejianwen/rustdesk-api-web' }}
+  WEBCLIENT_SOURCE_LOCATION: ${{ github.event.inputs.WEBCLIENT_SOURCE_LOCATION || 'https://github.com/alonginwind/rustdesk-api-web' }}
   BASE_IMAGE_NAMESPACE: ${{ github.event.inputs.BASE_IMAGE_NAMESPACE || github.actor }}
   DOCKERHUB_IMAGE_NAMESPACE: ${{ github.event.inputs.DOCKERHUB_IMAGE_NAMESPACE || github.actor }}
   GHCR_IMAGE_NAMESPACE: ${{ github.event.inputs.GHCR_IMAGE_NAMESPACE || github.actor }}
-  SKIP_DOCKER_HUB: ${{ github.event.inputs.SKIP_DOCKER_HUB || 'false' }}
+  SKIP_DOCKER_HUB: ${{ github.event.inputs.SKIP_DOCKER_HUB || 'true' }}
   SKIP_GHCR: ${{ github.event.inputs.SKIP_GHCR || 'false' }}
 jobs:
   build:
@@ -59,7 +59,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/checkout@v4
         with:
-          repository: lejianwen/rustdesk-api-web
+          repository: alonginwind/rustdesk-api-web
           path: rustdesk-api-web
           ref: master
 
