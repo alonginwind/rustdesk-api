@@ -56,7 +56,13 @@ func (i *Index) Heartbeat(c *gin.Context) {
 	}
 	//如果在40s以内则不更新
 	if time.Now().Unix()-peer.LastOnlineTime >= 30 {
-		upp := &model.Peer{RowId: peer.RowId, LastOnlineTime: time.Now().Unix(), LastOnlineIp: c.ClientIP()}
+		ab := service.AllService.AddressBookService.Info(info.Id)
+		var upp *model.Peer
+		if ab == nil || ab.RowId == 0 {
+			upp = &model.Peer{RowId: peer.RowId, LastOnlineTime: time.Now().Unix(), LastOnlineIp: c.ClientIP()}
+		} else {
+			upp = &model.Peer{RowId: peer.RowId, Alias: ab.Alias, LastOnlineTime: time.Now().Unix(), LastOnlineIp: c.ClientIP()}
+		}
 		service.AllService.PeerService.Update(upp)
 	}
 	c.JSON(http.StatusOK, gin.H{})
