@@ -111,7 +111,10 @@ func (s *AddressBookService) List(page, pageSize uint, where func(tx *gorm.DB)) 
 		where(tx)
 	}
 	tx.Count(&res.Total)
-	tx.Scopes(Paginate(page, pageSize))
+	tx.Scopes(Paginate(page, pageSize)).
+		Order("(CASE WHEN alias = '' THEN 0 ELSE 1 END) ASC").
+		Order("collection_id ASC").
+		Order("alias ASC")
 	tx.Find(&res.AddressBooks)
 	return
 }

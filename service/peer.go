@@ -86,7 +86,7 @@ func (ps *PeerService) List(page, pageSize uint, where func(tx *gorm.DB)) (res *
 		where(tx)
 	}
 	tx.Count(&res.Total)
-	tx.Scopes(Paginate(page, pageSize))
+	tx.Scopes(Paginate(page, pageSize)).Order("alias ASC")
 	tx.Find(&res.Peers)
 	return
 }
