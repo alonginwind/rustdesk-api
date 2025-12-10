@@ -139,6 +139,7 @@ func WebClientRoutes(frg *gin.RouterGroup) {
 	w := &api.WebClient{}
 	{
 		frg.POST("/shared-peer", w.SharedPeer)
+		frg.GET("/query-share-peer", w.QuerySharePeer)
 	}
 	{
 		frg.POST("/server-config", middleware.RustAuth(), w.ServerConfig)

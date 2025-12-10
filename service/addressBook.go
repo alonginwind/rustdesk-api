@@ -6,6 +6,12 @@ import (
 	"github.com/lejianwen/rustdesk-api/v2/model"
 	"gorm.io/gorm"
 	"strings"
+	"sync"
+)
+
+var (
+	SharePeerIds = make(map[string]struct{})
+	SharePeerIdsMu sync.RWMutex
 )
 
 type AddressBookService struct {
@@ -155,8 +161,31 @@ func (s *AddressBookService) UpdateAll(u *model.AddressBook) error {
 
 // ShareByWebClient 分享
 func (s *AddressBookService) ShareByWebClient(m *model.ShareRecord) error {
+	s.AddShareByWebClientId(m.PeerId)
 	m.ShareToken = uuid.New().String()
 	return DB.Create(m).Error
+}
+
+// 添加ShareByWebClient PeerId
+func (s *AddressBookService) AddShareByWebClientId(id string) {
+	SharePeerIdsMu.Lock()
+    defer SharePeerIdsMu.Unlock()
+    SharePeerIds[id] = struct{}{}
+}
+
+// 清理ShareByWebClient PeerId
+func (s *AddressBookService) DeleteShareByWebClientId(id string) {
+	SharePeerIdsMu.Lock()
+    defer SharePeerIdsMu.Unlock()
+    delete(SharePeerIds, id)
+}
+
+// 查询ShareByWebClient PeerId
+func (s *AddressBookService) QueryShareByWebClientId(id string) bool {
+	SharePeerIdsMu.RLock()
+    defer SharePeerIdsMu.RUnlock()
+    _, ok := SharePeerIds[id]
+    return ok
 }
 
 // SharedPeer
