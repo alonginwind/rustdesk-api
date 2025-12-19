@@ -8,6 +8,7 @@ import (
 	"github.com/lejianwen/rustdesk-api/v2/http/request/admin"
 	"github.com/lejianwen/rustdesk-api/v2/http/response"
 	"github.com/lejianwen/rustdesk-api/v2/service"
+	"github.com/lejianwen/rustdesk-api/v2/model"
 	"gorm.io/gorm"
 	"strconv"
 )
@@ -142,6 +143,14 @@ func (ct *AddressBook) BatchCreate(c *gin.Context) {
 		ex := service.AllService.AddressBookService.InfoByUserIdAndIdAndCid(t.UserId, t.Id, t.CollectionId)
 		if ex.RowId == 0 {
 			service.AllService.AddressBookService.Create(t)
+		}
+	}
+
+	if len(ts) == 1 {
+		peer := service.AllService.PeerService.FindById(ts[0].Id)
+		if peer != nil && peer.RowId != 0 {
+			upp := &model.Peer{RowId: peer.RowId, Alias: ts[0].Alias}
+			service.AllService.PeerService.Update(upp)
 		}
 	}
 
