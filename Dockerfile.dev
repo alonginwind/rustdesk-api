@@ -42,7 +42,7 @@ RUN if [ "$COUNTRY" = "CN" ] ; then \
     fi && \
     apk update && apk add --no-cache git
 
-ARG FRONTEND_GIT_REPO=https://github.com/lejianwen/rustdesk-api-web.git
+ARG FRONTEND_GIT_REPO=https://github.com/alonginwind/rustdesk-api-web.git
 ARG FRONTEND_GIT_BRANCH=master
 # Clone the frontend repository
 
