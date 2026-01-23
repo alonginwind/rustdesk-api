@@ -34,9 +34,10 @@ func (ct *Peer) List(c *gin.Context) {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError")+err.Error())
 		return
 	}
-	u := service.AllService.UserService.CurUser(c)
+	//u := service.AllService.UserService.CurUser(c)
 	res := service.AllService.PeerService.List(query.Page, query.PageSize, func(tx *gorm.DB) {
-		tx.Where("user_id = ?", u.Id)
+		//tx.Where("user_id = ?", u.Id)
+		tx.Where("alias = ''")
 		if query.TimeAgo > 0 {
 			lt := time.Now().Unix() - int64(query.TimeAgo)
 			tx.Where("last_online_time < ?", lt)
