@@ -7,6 +7,7 @@ import (
 	"github.com/lejianwen/rustdesk-api/v2/http/request/admin"
 	"github.com/lejianwen/rustdesk-api/v2/http/response"
 	"github.com/lejianwen/rustdesk-api/v2/service"
+	"github.com/lejianwen/rustdesk-api/v2/model"
 	"gorm.io/gorm"
 )
 
@@ -103,6 +104,13 @@ func (ct *AddressBook) Create(c *gin.Context) {
 		response.Fail(c, 101, response.TranslateMsg(c, "OperationFailed")+err.Error())
 		return
 	}
+
+	peer := service.AllService.PeerService.FindById(t.Id)
+	if peer != nil && peer.RowId != 0 {
+		upp := &model.Peer{RowId: peer.RowId, Alias: t.Alias}
+		service.AllService.PeerService.Update(upp)
+	}
+
 	response.Success(c, nil)
 }
 
