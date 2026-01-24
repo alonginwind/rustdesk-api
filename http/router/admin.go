@@ -285,6 +285,7 @@ func MyBind(rg *gin.RouterGroup) {
 
 	{
 		cont := &my.AddressBookCollection{}
+		rg.GET("/my/address_book_collection/list_shared", cont.ListShared)
 		rg.GET("/my/address_book_collection/list", cont.List)
 		rg.POST("/my/address_book_collection/create", cont.Create)
 		rg.POST("/my/address_book_collection/update", cont.Update)

@@ -57,6 +57,30 @@ func (abc *AddressBookCollection) Create(c *gin.Context) {
 // @Failure 500 {object} response.Response
 // @Router /admin/my/address_book_collection/list [get]
 // @Security token
+func (abc *AddressBookCollection) ListShared(c *gin.Context) {
+	query := &admin.AddressBookCollectionQuery{}
+	if err := c.ShouldBindQuery(query); err != nil {
+		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError")+err.Error())
+		return
+	}
+	res := service.AllService.AddressBookService.ListCollection(query.Page, query.PageSize, func(tx *gorm.DB) {
+		tx.Where("user_id = 1")
+	})
+	response.Success(c, res)
+}
+
+// List 列表
+// @Tags 我的地址簿名称
+// @Summary 地址簿名称列表
+// @Description 地址簿名称列表
+// @Accept  json
+// @Produce  json
+// @Param page query int false "页码"
+// @Param page_size query int false "页大小"
+// @Success 200 {object} response.Response{data=model.AddressBookCollectionList}
+// @Failure 500 {object} response.Response
+// @Router /admin/my/address_book_collection/list [get]
+// @Security token
 func (abc *AddressBookCollection) List(c *gin.Context) {
 	query := &admin.AddressBookCollectionQuery{}
 	if err := c.ShouldBindQuery(query); err != nil {
