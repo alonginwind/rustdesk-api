@@ -83,8 +83,10 @@ func (ct *AddressBook) Create(c *gin.Context) {
 		return
 	}
 	t := f.ToAddressBook()
-	u := service.AllService.UserService.CurUser(c)
-	t.UserId = u.Id
+	if t.UserId != 1 {
+		u := service.AllService.UserService.CurUser(c)
+		t.UserId = u.Id
+	}
 	if t.CollectionId > 0 && !service.AllService.AddressBookService.CheckCollectionOwner(t.UserId, t.CollectionId) {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
 		return
@@ -127,7 +129,7 @@ func (ct *AddressBook) Update(c *gin.Context) {
 		return
 	}
 	if f.RowId == 0 {
-		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
+		response.Fail(c, 101, response.TranslateMsg(c, "ItemNotFound"))
 		return
 	}
 	u := service.AllService.UserService.CurUser(c)
