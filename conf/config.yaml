@@ -11,7 +11,7 @@ app:
   disable-pwd-login: false #禁用密码登录
 
 admin:
-  title: "RustDesk API Admin"
+  title: "API"
   hello-file: "./conf/admin/hello.html"  #优先使用file
   hello: ""
   # ID Server and Relay Server ports https://github.com/lejianwen/rustdesk-api/issues/257
@@ -43,11 +43,11 @@ postgresql:
   time-zone: "Asia/Shanghai" # Time zone for PostgreSQL connection
 
 rustdesk:
-  id-server: "192.168.1.66:21116"
-  relay-server: "192.168.1.66:21117"
+  id-server: ""
+  relay-server: ""
   api-server: "http://127.0.0.1:21114"
   key: ""
-  key-file: "/data/id_ed25519.pub"
+  key-file: "./data/id_ed25519.pub"
   personal: 1
   webclient-magic-queryonline: 0
   ws-host: ""  #eg: wss://192.168.1.3:4443

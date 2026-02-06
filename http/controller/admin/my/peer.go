@@ -35,7 +35,7 @@ func (ct *Peer) List(c *gin.Context) {
 		return
 	}
 	//u := service.AllService.UserService.CurUser(c)
-	res := service.AllService.PeerService.List(query.Page, query.PageSize, func(tx *gorm.DB) {
+	res := service.AllService.PeerService.List(query.Page, query.PageSize, "alias", func(tx *gorm.DB) {
 		//tx.Where("user_id = ?", u.Id)
 		tx.Where("alias = ''")
 		if query.TimeAgo > 0 {

@@ -77,7 +77,7 @@ func (ps *PeerService) ListByUserIds(userIds []uint, page, pageSize uint) (res *
 	return
 }
 
-func (ps *PeerService) List(page, pageSize uint, where func(tx *gorm.DB)) (res *model.PeerList) {
+func (ps *PeerService) List(page, pageSize uint, orderBy string, where func(tx *gorm.DB)) (res *model.PeerList) {
 	res = &model.PeerList{}
 	res.Page = int64(page)
 	res.PageSize = int64(pageSize)
@@ -86,7 +86,15 @@ func (ps *PeerService) List(page, pageSize uint, where func(tx *gorm.DB)) (res *
 		where(tx)
 	}
 	tx.Count(&res.Total)
-	tx.Scopes(Paginate(page, pageSize)).Order("alias ASC")
+
+	orderClause := "created_at DESC"
+	if orderBy == "alias" {
+		orderClause = "alias ASC"
+	} else if orderBy == "time" {
+		orderClause = "created_at DESC"
+	}
+	tx = tx.Order(orderClause)
+	tx = tx.Scopes(Paginate(page, pageSize))
 	tx.Find(&res.Peers)
 	return
 }
@@ -100,7 +108,7 @@ func (ps *PeerService) ListFilterByUserId(page, pageSize uint, where func(tx *go
 			where(tx)
 		}
 	}
-	return ps.List(page, pageSize, userWhere)
+	return ps.List(page, pageSize, "alias", userWhere)
 }
 
 // Create 创建

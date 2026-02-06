@@ -347,7 +347,7 @@ func (ct *AddressBook) BatchCreateFromPeers(c *gin.Context) {
 	}
 
 	pl := int64(len(f.PeerIds))
-	peers := service.AllService.PeerService.List(1, uint(pl), func(tx *gorm.DB) {
+	peers := service.AllService.PeerService.List(1, uint(pl), "alias", func(tx *gorm.DB) {
 		tx.Where("row_id in ?", f.PeerIds)
 	})
 	if peers.Total == 0 || pl != peers.Total {

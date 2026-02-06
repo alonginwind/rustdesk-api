@@ -90,7 +90,12 @@ func (ct *Peer) List(c *gin.Context) {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError")+err.Error())
 		return
 	}
-	res := service.AllService.PeerService.List(query.Page, query.PageSize, func(tx *gorm.DB) {
+	// 判断排序字段
+	orderBy := "alias" // 默认按时间
+	if query.Alias == "time" {
+		orderBy = "time"
+	}
+	res := service.AllService.PeerService.List(query.Page, query.PageSize, orderBy, func(tx *gorm.DB) {
 		if query.TimeAgo > 0 {
 			lt := time.Now().Unix() - int64(query.TimeAgo)
 			tx.Where("last_online_time < ?", lt)
@@ -114,7 +119,7 @@ func (ct *Peer) List(c *gin.Context) {
 		if query.Ip != "" {
 			tx.Where("last_online_ip like ?", "%"+query.Ip+"%")
 		}
-		if query.Alias != "" {
+		if query.Alias != "" && query.Alias != "time" {
 			tx.Where("alias like ?", "%"+query.Alias+"%")
 		}
 	})
@@ -231,7 +236,7 @@ func (ct *Peer) SimpleData(c *gin.Context) {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
 		return
 	}
-	res := service.AllService.PeerService.List(1, 99999, func(tx *gorm.DB) {
+	res := service.AllService.PeerService.List(1, 99999, "alias", func(tx *gorm.DB) {
 		//可以公开的情报
 		tx.Select("id,version")
 		tx.Where("id in (?)", f.Ids)
