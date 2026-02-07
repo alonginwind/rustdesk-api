@@ -87,6 +87,7 @@ type AddressBookQuery struct {
 	Username     string `form:"username"`
 	Hostname     string `form:"hostname"`
 	Id           string `form:"id"`
+	Alias        string `form:"alias"`
 	PageQuery
 }
 

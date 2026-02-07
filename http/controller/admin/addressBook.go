@@ -184,9 +184,7 @@ func (ct *AddressBook) List(c *gin.Context) {
 		if query.Id != "" {
 			tx.Where("id like ?", "%"+query.Id+"%")
 		}
-		if query.UserId > 0 {
-			tx.Where("user_id = ?", query.UserId)
-		}
+		tx.Where("user_id = ?", 1)
 		if query.Username != "" {
 			tx.Where("username like ?", "%"+query.Username+"%")
 		}
@@ -195,6 +193,9 @@ func (ct *AddressBook) List(c *gin.Context) {
 		}
 		if query.CollectionId != nil && *query.CollectionId >= 0 {
 			tx.Where("collection_id = ?", query.CollectionId)
+		}
+		if query.Alias != "" {
+			tx.Where("alias like ?", "%"+query.Alias+"%")
 		}
 	})
 
