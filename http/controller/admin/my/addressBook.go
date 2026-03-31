@@ -9,6 +9,8 @@ import (
 	"github.com/lejianwen/rustdesk-api/v2/service"
 	"github.com/lejianwen/rustdesk-api/v2/model"
 	"gorm.io/gorm"
+	"sync"
+	"fmt"
 )
 
 type AddressBook struct{}
@@ -92,6 +94,13 @@ func (ct *AddressBook) Create(c *gin.Context) {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
 		return
 	}
+
+	key := fmt.Sprintf("%d_%d_%d", t.UserId, t.Id, t.CollectionId)
+	v, _ := global.AddressBookLockMap.LoadOrStore(key, &sync.Mutex{})
+	mu := v.(*sync.Mutex)
+
+	mu.Lock()
+	defer mu.Unlock()
 
 	ex := service.AllService.AddressBookService.InfoByUserIdAndIdAndCid(t.UserId, t.Id, t.CollectionId)
 	if ex.RowId > 0 {

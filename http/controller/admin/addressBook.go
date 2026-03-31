@@ -11,6 +11,8 @@ import (
 	"github.com/lejianwen/rustdesk-api/v2/model"
 	"gorm.io/gorm"
 	"strconv"
+	"sync"
+	"fmt"
 )
 
 type AddressBook struct {
@@ -140,10 +142,16 @@ func (ct *AddressBook) BatchCreate(c *gin.Context) {
 		if t.UserId == 0 {
 			continue
 		}
+		key := fmt.Sprintf("%d_%d_%d", t.UserId, t.Id, t.CollectionId)
+		v, _ := global.AddressBookLockMap.LoadOrStore(key, &sync.Mutex{})
+		mu := v.(*sync.Mutex)
+
+		mu.Lock()
 		ex := service.AllService.AddressBookService.InfoByUserIdAndIdAndCid(t.UserId, t.Id, t.CollectionId)
 		if ex.RowId == 0 {
 			service.AllService.AddressBookService.Create(t)
 		}
+		mu.Unlock()
 	}
 
 	if len(ts) == 1 {
