@@ -14,11 +14,13 @@
 <img src="https://github.com/lejianwen/rustdesk-api/actions/workflows/build.yml/badge.svg"/>
 </div>
 
-## 搭配[lejianwen/rustdesk-server]使用更佳。
-> [lejianwen/rustdesk-server]fork自RustDesk Server官方仓库
+## 搭配[alonginwind/rustdesk-server]使用更佳。
+> [alonginwind/rustdesk-server]fork自lejianwen/rustdesk-server
 > 1. 解决了使用API链接超时问题
 > 2. 可以强制登录后才能发起链接
 > 3. 支持客户端websocket
+> 4. 修复局域网多台设备开启websocket的bug
+> 5. 修复token与原生客户端一致性
 
 
 
@@ -96,18 +98,17 @@
 
 3. 每个用户可以多个地址簿，也可以将地址簿共享给其他用户
 4. 分组可以自定义，方便管理，暂时支持两种类型: `共享组` 和 `普通组`
-5. 可以直接打开webclient，方便使用；也可以分享给游客，游客可以直接通过webclient远程到设备
-6. Oauth,支持了`Github`, `Google` 以及 `OIDC`, 需要创建一个`OAuth App`，然后配置到后台
+5. Oauth,支持了`Github`, `Google` 以及 `OIDC`, 需要创建一个`OAuth App`，然后配置到后台
     - 对于`Google` 和 `Github`, `Issuer` 和 `Scopes`不需要填写.
     - 对于`OIDC`, `Issuer`是必须的。`Scopes`是可选的，默认为 `openid,profile,email`. 确保可以获取 `sub`,`email` 和`preferred_username`
     - `github oauth app`在`Settings`->`Developer settings`->`OAuth Apps`->`New OAuth App`
       中创建,地址 [https://github.com/settings/developers](https://github.com/settings/developers)
     - `Authorization callback URL`填写`http://<your server[:port]>/api/oidc/callback`
       ，比如`http://127.0.0.1:21114/api/oidc/callback`
-7. 登录日志
-8. 链接日志
-9. 文件传输日志
-10. server控制
+6. 登录日志
+7. 链接日志
+8. 文件传输日志
+9. server控制
 
   - `简易模式`,已经界面化了一些简单的指令，可以直接在后台执行
     ![rustdesk_command_simple](./docs/rustdesk_command_simple.png)
@@ -119,13 +120,6 @@
 
  
 11. **LDAP 支持**, 当在API Server上设置了LDAP(已测试AD和LDAP),可以通过LDAP中的用户信息进行登录 https://github.com/lejianwen/rustdesk-api/issues/114 ,如果LDAP验证失败，返回本地用户
-
-### Web Client:
-
-1. 如果已经登录了后台，web client将自动直接登录
-2. 如果没登录后台，点击右上角登录即可，api server已经自动配置好了
-3. 登录后，会自动同步ID服务器和KEY
-4. 登录后，会将地址簿自动保存到web client中，方便使用
 
 
 ### 自动化文档: 使用 Swag 生成 API 文档，方便开发者理解和使用 API。
@@ -319,7 +313,6 @@
 - [WIKI](https://github.com/lejianwen/rustdesk-api/wiki)
 - [链接超时问题](https://github.com/lejianwen/rustdesk-api/issues/92)
 - [修改客户端ID](https://github.com/abdullah-erturk/RustDesk-ID-Changer)
-- [webclient来源](https://hub.docker.com/r/keyurbhole/flutter_web_desk)
 
 
 ## 鸣谢
