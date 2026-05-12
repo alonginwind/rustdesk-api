@@ -35,20 +35,28 @@ func (p *Peer) SysInfo(c *gin.Context) {
 	if pe.RowId == 0 {
 		pe = f.ToPeer()
 		pe.UserId = service.AllService.UserService.FindLatestUserIdFromLoginLogByUuid(pe.Uuid, pe.Id)
-		err = service.AllService.PeerService.Create(pe)
-		if err != nil {
-			response.Error(c, response.TranslateMsg(c, "OperationFailed")+err.Error())
+		if pe.UserId == 0 {//只同步未登录的被控端
+			err = service.AllService.PeerService.Create(pe)
+			if err != nil {
+				response.Error(c, response.TranslateMsg(c, "OperationFailed")+err.Error())
+				return
+			}
+		} else {
+			c.String(http.StatusOK, "IGNORE")
 			return
 		}
 	} else {
-		if pe.UserId == 0 {
-			pe.UserId = service.AllService.UserService.FindLatestUserIdFromLoginLogByUuid(pe.Uuid, pe.Id)
-		}
-		fpe.RowId = pe.RowId
-		fpe.UserId = pe.UserId
-		err = service.AllService.PeerService.Update(fpe)
-		if err != nil {
-			response.Error(c, response.TranslateMsg(c, "OperationFailed")+err.Error())
+		pe.UserId = service.AllService.UserService.FindLatestUserIdFromLoginLogByUuid(pe.Uuid, pe.Id)
+		if pe.UserId == 0 {//只同步未登录的被控端
+			fpe.RowId = pe.RowId
+			fpe.UserId = pe.UserId
+			err = service.AllService.PeerService.Update(fpe)
+			if err != nil {
+				response.Error(c, response.TranslateMsg(c, "OperationFailed")+err.Error())
+				return
+			}
+		} else {
+			c.String(http.StatusOK, "IGNORE")
 			return
 		}
 	}
