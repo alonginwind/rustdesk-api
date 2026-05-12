@@ -54,16 +54,21 @@ func (i *Index) Heartbeat(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{})
 		return
 	}
-	//如果在40s以内则不更新
-	if time.Now().Unix()-peer.LastOnlineTime >= 30 {
-		ab := service.AllService.AddressBookService.InfoByUserIdAndId(1, info.Id)//别名只同步全员地址簿，私人地址簿数据不同步
-		var upp *model.Peer
-		if ab == nil || ab.RowId == 0 {
-			upp = &model.Peer{RowId: peer.RowId, LastOnlineTime: time.Now().Unix(), LastOnlineIp: c.ClientIP()}
-		} else {
-			upp = &model.Peer{RowId: peer.RowId, Alias: ab.Alias, LastOnlineTime: time.Now().Unix(), LastOnlineIp: c.ClientIP()}
+	peer.UserId = service.AllService.UserService.FindLatestUserIdFromLoginLogByUuid(peer.Uuid, peer.Id)
+	if peer.UserId == 0 || peer.Alias != "" {
+		//如果在40s以内则不更新
+		if time.Now().Unix()-peer.LastOnlineTime >= 30 {
+			ab := service.AllService.AddressBookService.InfoByUserIdAndId(1, info.Id)//别名只同步全员地址簿，私人地址簿数据不同步
+			var upp *model.Peer
+			if ab == nil || ab.RowId == 0 {
+				upp = &model.Peer{RowId: peer.RowId, LastOnlineTime: time.Now().Unix(), LastOnlineIp: c.ClientIP()}
+			} else {
+				upp = &model.Peer{RowId: peer.RowId, Alias: ab.Alias, LastOnlineTime: time.Now().Unix(), LastOnlineIp: c.ClientIP()}
+			}
+			service.AllService.PeerService.Update(upp)
 		}
-		service.AllService.PeerService.Update(upp)
+	} else {//删除已登录的未绑定被控端
+		service.AllService.PeerService.Delete(peer);
 	}
 	c.JSON(http.StatusOK, gin.H{})
 }
