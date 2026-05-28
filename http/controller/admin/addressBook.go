@@ -192,7 +192,11 @@ func (ct *AddressBook) List(c *gin.Context) {
 		if query.Id != "" {
 			tx.Where("id like ?", "%"+query.Id+"%")
 		}
-		tx.Where("user_id = ?", 1)
+		if query.UserId > 0 {
+			tx.Where("user_id = ?", query.UserId)
+		} else {
+			tx.Where("user_id = ?", 1)
+		}
 		if query.Username != "" {
 			tx.Where("username like ?", "%"+query.Username+"%")
 		}
