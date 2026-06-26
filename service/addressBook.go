@@ -10,9 +10,12 @@ import (
 )
 
 var (
-	SharePeerIds = make(map[string]struct{})
-	SharePeerIdsMu sync.RWMutex
+	SharePeerIds   = make(map[string]map[string]struct{})
+	SharePeerIdsMu sync.Mutex
 )
+
+// 所有连接类型
+var ShareConnTypes = []string{"default_conn", "file_transfer", "terminal"}
 
 type AddressBookService struct {
 }
@@ -166,32 +169,46 @@ func (s *AddressBookService) ShareByWebClient(m *model.ShareRecord) error {
 	return DB.Create(m).Error
 }
 
-// 添加ShareByWebClient PeerId
+// 添加ShareByWebClient PeerId，初始化所有连接类型
 func (s *AddressBookService) AddShareByWebClientId(id string) {
 	SharePeerIdsMu.Lock()
-    defer SharePeerIdsMu.Unlock()
-    SharePeerIds[id] = struct{}{}
+	defer SharePeerIdsMu.Unlock()
+	connTypes := make(map[string]struct{})
+	for _, ct := range ShareConnTypes {
+		connTypes[ct] = struct{}{}
+	}
+	SharePeerIds[id] = connTypes
 }
 
-// 清理ShareByWebClient PeerId
-func (s *AddressBookService) DeleteShareByWebClientId(id string) {
+// ConsumeShareByWebClientId 查询并消费（删除）指定连接类型，返回是否存在
+func (s *AddressBookService) ConsumeShareByWebClientId(id string, connType string) bool {
 	SharePeerIdsMu.Lock()
-    defer SharePeerIdsMu.Unlock()
-    delete(SharePeerIds, id)
+	defer SharePeerIdsMu.Unlock()
+	connTypes, ok := SharePeerIds[id]
+	if !ok {
+		return false
+	}
+	if _, exists := connTypes[connType]; !exists {
+		return false
+	}
+	delete(connTypes, connType)
+	if len(connTypes) == 0 {
+		delete(SharePeerIds, id)
+	}
+	return true
 }
 
-// 查询ShareByWebClient PeerId
-func (s *AddressBookService) QueryShareByWebClientId(id string) bool {
-	SharePeerIdsMu.RLock()
-    defer SharePeerIdsMu.RUnlock()
-    _, ok := SharePeerIds[id]
-    return ok
+// DeleteAllShareByWebClientId 清理所有连接类型
+func (s *AddressBookService) DeleteAllShareByWebClientId(id string) {
+	SharePeerIdsMu.Lock()
+	defer SharePeerIdsMu.Unlock()
+	delete(SharePeerIds, id)
 }
 
 // SharedPeer
 func (s *AddressBookService) SharedPeer(shareToken string) *model.ShareRecord {
 	m := &model.ShareRecord{}
-	DB.Where("share_token = ?", shareToken).First(m)
+	DB.Where("share_token = ?", shareToken).Last(m)
 	return m
 }
 
