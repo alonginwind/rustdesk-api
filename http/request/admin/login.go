@@ -9,8 +9,9 @@ type Login struct {
 }
 
 type LoginLogQuery struct {
-	UserId int `form:"user_id"`
-	IsMy   int `form:"is_my"`
+	UserId   int    `form:"user_id"`
+	IsMy     int    `form:"is_my"`
+	DeviceId string `form:"device_id"`
 	PageQuery
 }
 type LoginTokenQuery struct {
