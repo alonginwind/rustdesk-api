@@ -46,6 +46,7 @@ func (ct *LoginLog) Detail(c *gin.Context) {
 // @Param page query int false "页码"
 // @Param page_size query int false "页大小"
 // @Param user_id query int false "用户ID"
+// @Param device_id query string false "设备ID"
 // @Success 200 {object} response.Response{data=model.LoginLogList}
 // @Failure 500 {object} response.Response
 // @Router /admin/login_log/list [get]
@@ -59,6 +60,9 @@ func (ct *LoginLog) List(c *gin.Context) {
 	res := service.AllService.LoginLogService.List(query.Page, query.PageSize, func(tx *gorm.DB) {
 		if query.UserId > 0 {
 			tx.Where("user_id = ?", query.UserId)
+		}
+		if query.DeviceId != "" {
+			tx.Where("device_id like ?", "%"+query.DeviceId+"%")
 		}
 		tx.Order("id desc")
 	})
