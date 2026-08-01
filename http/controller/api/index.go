@@ -70,7 +70,22 @@ func (i *Index) Heartbeat(c *gin.Context) {
 	} else {//删除已登录的未绑定被控端
 		service.AllService.PeerService.Delete(peer);
 	}
-	c.JSON(http.StatusOK, gin.H{})
+	// 构建心跳响应，检查是否有策略配置需要下发给被控端
+	// 对应 RustDesk 客户端 sync.rs 中心跳响应的 strategy 字段
+	resp := gin.H{}
+	strategy := service.AllService.PeerStrategyService.FindByPeerId(info.Id)
+	// 没有设备策略，回退到全局默认策略
+	if strategy.Id == 0 {
+		strategy = service.AllService.PeerStrategyService.FindDefault()
+	}
+	if strategy.Id > 0 && info.ModifiedAt != strategy.ModifiedAt {
+		configOptions := service.AllService.PeerStrategyService.GetConfigOptions(strategy)
+		resp["strategy"] = gin.H{
+			"config_options": configOptions,
+		}
+		resp["modified_at"] = strategy.ModifiedAt
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 // Version 版本

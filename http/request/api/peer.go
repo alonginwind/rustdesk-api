@@ -73,7 +73,8 @@ type TagColorForm struct {
 }
 
 type PeerInfoInHeartbeat struct {
-	Id   string `json:"id"`
-	Uuid string `json:"uuid"`
-	Ver  int    `json:"ver"`
+	Id         string `json:"id"`
+	Uuid       string `json:"uuid"`
+	Ver        int    `json:"ver"`
+	ModifiedAt int64  `json:"modified_at"` // 客户端本地的策略时间戳 strategy_timestamp
 }

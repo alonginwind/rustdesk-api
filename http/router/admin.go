@@ -50,6 +50,7 @@ func Init(g *gin.Engine) {
 
 	RustdeskCmdBind(adg)
 	DeviceGroupBind(adg)
+	PeerStrategyBind(adg)
 	//访问静态文件
 	//g.StaticFS("/upload", http.Dir(global.Config.Gin.ResourcesPath+"/upload"))
 }
@@ -310,6 +311,20 @@ func MyBind(rg *gin.RouterGroup) {
 		rg.GET("/my/login_log/list", cont.List)
 		rg.POST("/my/login_log/delete", cont.Delete)
 		rg.POST("/my/login_log/batchDelete", cont.BatchDelete)
+	}
+}
+
+func PeerStrategyBind(rg *gin.RouterGroup) {
+	aR := rg.Group("/peer_strategy").Use(middleware.AdminPrivilege())
+	{
+		cont := &admin.PeerStrategy{}
+		aR.GET("/list", cont.List)
+		aR.GET("/detail/:id", cont.Detail)
+		aR.POST("/create", cont.Create)
+		aR.POST("/update", cont.Update)
+		aR.POST("/delete", cont.Delete)
+		aR.GET("/default", cont.Default)
+		aR.POST("/default/update", cont.UpdateDefault)
 	}
 }
 
