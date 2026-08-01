@@ -23,7 +23,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const DatabaseVersion = 265
+const DatabaseVersion = 266
 
 // @title 管理系统API
 // @version 1.0
@@ -306,6 +306,7 @@ func Migrate(version uint) {
 		&model.AddressBookCollectionRule{},
 		&model.ServerCmd{},
 		&model.DeviceGroup{},
+		&model.PeerStrategy{},
 	)
 	if err != nil {
 		global.Logger.Error("migrate err :=>", err)
