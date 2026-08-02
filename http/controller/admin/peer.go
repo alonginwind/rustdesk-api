@@ -80,6 +80,7 @@ func (ct *Peer) Create(c *gin.Context) {
 // @Param id query string false "ID"
 // @Param hostname query string false "主机名"
 // @Param uuids query string false "uuids 用逗号分隔"
+// @Param version query string false "版本号"
 // @Success 200 {object} response.Response{data=model.PeerList}
 // @Failure 500 {object} response.Response
 // @Router /admin/peer/list [get]
@@ -121,6 +122,9 @@ func (ct *Peer) List(c *gin.Context) {
 		}
 		if query.Alias != "" && query.Alias != "time" {
 			tx.Where("alias like ?", "%"+query.Alias+"%")
+		}
+		if query.Version != "" {
+			tx.Where("version like ?", "%"+query.Version+"%")
 		}
 	})
 	response.Success(c, res)
