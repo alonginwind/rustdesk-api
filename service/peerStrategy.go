@@ -119,3 +119,33 @@ func (pss *PeerStrategyService) GetConfigOptions(ps *model.PeerStrategy) map[str
 	}
 	return configOptions
 }
+
+// GetMergedConfigOptions 合并设备策略和默认策略的配置
+// 优先级：设备策略 > 默认策略
+// 如果设备策略没有某个配置项，则使用默认策略的配置
+func (pss *PeerStrategyService) GetMergedConfigOptions(deviceStrategy, defaultStrategy *model.PeerStrategy) map[string]string {
+	// 先从默认策略开始
+	merged := pss.GetConfigOptions(defaultStrategy)
+	// 用设备策略覆盖
+	deviceOptions := pss.GetConfigOptions(deviceStrategy)
+	for k, v := range deviceOptions {
+		merged[k] = v
+	}
+	return merged
+}
+
+// GetEffectiveModifiedAt 获取有效的 modified_at（取设备策略和默认策略的最大值）
+func (pss *PeerStrategyService) GetEffectiveModifiedAt(deviceStrategy, defaultStrategy *model.PeerStrategy) int64 {
+	deviceModifiedAt := int64(0)
+	if deviceStrategy != nil && deviceStrategy.Id > 0 {
+		deviceModifiedAt = deviceStrategy.ModifiedAt
+	}
+	defaultModifiedAt := int64(0)
+	if defaultStrategy != nil && defaultStrategy.Id > 0 {
+		defaultModifiedAt = defaultStrategy.ModifiedAt
+	}
+	if deviceModifiedAt > defaultModifiedAt {
+		return deviceModifiedAt
+	}
+	return defaultModifiedAt
+}
