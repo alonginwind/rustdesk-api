@@ -73,17 +73,18 @@ func (i *Index) Heartbeat(c *gin.Context) {
 	// 构建心跳响应，检查是否有策略配置需要下发给被控端
 	// 对应 RustDesk 客户端 sync.rs 中心跳响应的 strategy 字段
 	resp := gin.H{}
-	strategy := service.AllService.PeerStrategyService.FindByPeerId(info.Id)
-	// 没有设备策略，回退到全局默认策略
-	if strategy.Id == 0 {
-		strategy = service.AllService.PeerStrategyService.FindDefault()
-	}
-	if strategy.Id > 0 && info.ModifiedAt != strategy.ModifiedAt {
-		configOptions := service.AllService.PeerStrategyService.GetConfigOptions(strategy)
+	deviceStrategy := service.AllService.PeerStrategyService.FindByPeerId(info.Id)
+	defaultStrategy := service.AllService.PeerStrategyService.FindDefault()
+	// 合并策略：设备策略 > 默认策略
+	effectiveModifiedAt := service.AllService.PeerStrategyService.GetEffectiveModifiedAt(deviceStrategy, defaultStrategy)
+	// 如果任一策略存在，且 modified_at 有变化，则下发合并后的配置
+	hasStrategy := (deviceStrategy.Id > 0) || (defaultStrategy.Id > 0)
+	if hasStrategy && info.ModifiedAt != effectiveModifiedAt {
+		configOptions := service.AllService.PeerStrategyService.GetMergedConfigOptions(deviceStrategy, defaultStrategy)
 		resp["strategy"] = gin.H{
 			"config_options": configOptions,
 		}
-		resp["modified_at"] = strategy.ModifiedAt
+		resp["modified_at"] = effectiveModifiedAt
 	}
 	c.JSON(http.StatusOK, resp)
 }
