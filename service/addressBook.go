@@ -403,15 +403,24 @@ func (s *AddressBookService) ApplyPresetToAddressBook(peerId, os, abName, abAlia
 	// 检查该集合下是否已有该设备的条目
 	existing := &model.AddressBook{}
 	if DB.Where("id = ? AND collection_id = ?", peerId, collection.Id).First(existing).Error == nil {
-		// 已存在，更新
-		DB.Model(existing).Updates(map[string]interface{}{
-			"alias":    abAlias,
-			"hostname": hostname,
-		})
+		// 已存在，仅用非空值更新，避免覆盖管理员手动设置的别名
+		updates := map[string]interface{}{}
+		if abAlias != "" {
+			updates["alias"] = abAlias
+		}
+		if hostname != "" {
+			updates["hostname"] = hostname
+		}
+		if len(updates) > 0 {
+			DB.Model(existing).Updates(updates)
+		}
 		return
 	}
 
-	// 不存在，创建新条目
+	// 不存在，删除该设备在其他全员集合中的旧条目
+	DB.Where("id = ? AND user_id = 1 AND collection_id != ?", peerId, collection.Id).Delete(&model.AddressBook{})
+
+	// 创建新条目
 	platform := s.PlatformFromOs(os)
 	ab := &model.AddressBook{
 		Id:           peerId,
@@ -430,9 +439,9 @@ func (s *AddressBookService) GetPresetValuesForPeer(peerId string) (string, stri
 	if peerId == "" {
 		return "", "", ""
 	}
-	// 查找地址簿条目（按设备ID查找，不限制user_id）
+	// 查找地址簿条目（按设备ID查找全员地址簿）
 	ab := &model.AddressBook{}
-	if DB.Where("id = ?", peerId).First(ab).Error != nil {
+	if DB.Where("id = ? AND user_id = 1", peerId).First(ab).Error != nil {
 		return "", "", ""
 	}
 	collectionName := ""
