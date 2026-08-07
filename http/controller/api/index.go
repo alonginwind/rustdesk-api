@@ -79,10 +79,35 @@ func (i *Index) Heartbeat(c *gin.Context) {
 	effectiveModifiedAt := service.AllService.PeerStrategyService.GetEffectiveModifiedAt(deviceStrategy, defaultStrategy)
 	// 如果任一策略存在，且 modified_at 有变化，则下发合并后的配置
 	hasStrategy := (deviceStrategy.Id > 0) || (defaultStrategy.Id > 0)
+	strategyChanged := false
+	var mergedConfig map[string]string
 	if hasStrategy && info.ModifiedAt != effectiveModifiedAt {
-		configOptions := service.AllService.PeerStrategyService.GetMergedConfigOptions(deviceStrategy, defaultStrategy)
+		mergedConfig = service.AllService.PeerStrategyService.GetMergedConfigOptions(deviceStrategy, defaultStrategy)
+		strategyChanged = true
+	}
+
+	// 检查地址簿预设信息是否有变化（集合名称、别名、主机名）
+	abName, abAlias, abHostname := service.AllService.AddressBookService.GetPresetValuesForPeer(info.Id)
+	presetChanged := abName != peer.PresetAbName || abAlias != peer.PresetAbAlias || abHostname != peer.PresetDevName
+	if presetChanged {
+		if !strategyChanged {
+			if hasStrategy {
+				mergedConfig = service.AllService.PeerStrategyService.GetMergedConfigOptions(deviceStrategy, defaultStrategy)
+			} else {
+				mergedConfig = map[string]string{}
+			}
+		}
+		// 始终写入（包括空值），确保客户端能清除旧预设
+		mergedConfig["preset-address-book-name"] = abName
+		mergedConfig["preset-address-book-alias"] = abAlias
+		mergedConfig["preset-device-name"] = abHostname
+		// 更新 peer 表中的预设值，用于下次对比
+		service.AllService.PeerService.UpdatePresets(peer.RowId, abName, abAlias, abHostname)
+	}
+
+	if strategyChanged || presetChanged {
 		resp["strategy"] = gin.H{
-			"config_options": configOptions,
+			"config_options": mergedConfig,
 		}
 		resp["modified_at"] = effectiveModifiedAt
 	}

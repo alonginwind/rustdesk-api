@@ -381,6 +381,70 @@ func (s *AddressBookService) CheckCollectionOwner(uid uint, cid uint) bool {
 	return p.UserId == uid
 }
 
+// ApplyPresetToAddressBook 根据客户端上报的预设值自动将设备添加到指定地址簿集合
+// 参数：
+//   peerId   - 设备ID
+//   os       - 操作系统信息
+//   abName   - preset-address-book-name，地址簿集合名称
+//   abAlias  - preset-address-book-alias，地址簿中的别名
+//   hostname - 主机名（客户端已将 preset-device-name 写入 hostname 字段）
+//   username - 用户名（客户端已将 preset-device-username 写入 username 字段）
+func (s *AddressBookService) ApplyPresetToAddressBook(peerId, os, abName, abAlias, hostname, username string) {
+	if abName == "" {
+		return
+	}
+
+	// 查找地址簿集合（admin用户 user_id=1 下）
+	collection := &model.AddressBookCollection{}
+	if DB.Where("name = ? AND user_id = 1", abName).First(collection).Error != nil {
+		return
+	}
+
+	// 检查该集合下是否已有该设备的条目
+	existing := &model.AddressBook{}
+	if DB.Where("id = ? AND collection_id = ?", peerId, collection.Id).First(existing).Error == nil {
+		// 已存在，更新
+		DB.Model(existing).Updates(map[string]interface{}{
+			"alias":    abAlias,
+			"hostname": hostname,
+		})
+		return
+	}
+
+	// 不存在，创建新条目
+	platform := s.PlatformFromOs(os)
+	ab := &model.AddressBook{
+		Id:           peerId,
+		Alias:        abAlias,
+		Hostname:     hostname,
+		Username:     username,
+		Platform:     platform,
+		CollectionId: collection.Id,
+	}
+	DB.Create(ab)
+}
+
+// GetPresetValuesForPeer 从地址簿中查询设备的预设信息
+// 返回: (collectionName, alias, hostname)
+func (s *AddressBookService) GetPresetValuesForPeer(peerId string) (string, string, string) {
+	if peerId == "" {
+		return "", "", ""
+	}
+	// 查找地址簿条目（按设备ID查找，不限制user_id）
+	ab := &model.AddressBook{}
+	if DB.Where("id = ?", peerId).First(ab).Error != nil {
+		return "", "", ""
+	}
+	collectionName := ""
+	if ab.CollectionId > 0 {
+		collection := s.CollectionInfoById(ab.CollectionId)
+		if collection.Id > 0 {
+			collectionName = collection.Name
+		}
+	}
+	return collectionName, ab.Alias, ab.Hostname
+}
+
 func (s *AddressBookService) BatchUpdateTags(abs []*model.AddressBook, tags []string) error {
 	ids := make([]uint, 0)
 	for _, ab := range abs {
