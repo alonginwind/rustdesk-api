@@ -159,3 +159,12 @@ func (ps *PeerService) BatchDelete(ids []uint) error {
 func (ps *PeerService) Update(u *model.Peer) error {
 	return DB.Model(u).Updates(u).Error
 }
+
+// UpdatePresets 仅更新预设地址簿字段（支持空值写入）
+func (ps *PeerService) UpdatePresets(rowId uint, presetAbName, presetAbAlias, presetDevName string) error {
+	return DB.Model(&model.Peer{}).Where("row_id = ?", rowId).Updates(map[string]interface{}{
+		"preset_ab_name":  presetAbName,
+		"preset_ab_alias": presetAbAlias,
+		"preset_dev_name": presetDevName,
+	}).Error
+}

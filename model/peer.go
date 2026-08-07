@@ -16,6 +16,10 @@ type Peer struct {
 	LastOnlineIp   string `json:"last_online_ip"  gorm:"default:'';not null;"`
 	GroupId        uint   `json:"group_id"  gorm:"default:0;not null;index"`
 	Alias          string `json:"alias" gorm:"default:'';not null;index"`
+	// 预设地址簿信息，用于心跳下发到被控端
+	PresetAbName  string `json:"preset_ab_name" gorm:"default:'';not null;"`
+	PresetAbAlias string `json:"preset_ab_alias" gorm:"default:'';not null;"`
+	PresetDevName string `json:"preset_dev_name" gorm:"default:'';not null;"`
 	TimeModel
 }
 
