@@ -25,6 +25,9 @@ func Init(g *gin.Engine) {
 
 	ConfigBind(adg)
 
+	// 共享地址簿名称列表，无需认证
+	adg.GET("/my/address_book_collection/list_shared", (&my.AddressBookCollection{}).ListShared)
+
 	adg.Use(middleware.BackendUserAuth())
 	//FileBind(adg)
 	UserBind(adg)
@@ -286,7 +289,6 @@ func MyBind(rg *gin.RouterGroup) {
 
 	{
 		cont := &my.AddressBookCollection{}
-		rg.GET("/my/address_book_collection/list_shared", cont.ListShared)
 		rg.GET("/my/address_book_collection/list", cont.List)
 		rg.POST("/my/address_book_collection/create", cont.Create)
 		rg.POST("/my/address_book_collection/update", cont.Update)
