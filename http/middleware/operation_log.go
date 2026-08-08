@@ -10,13 +10,17 @@ import (
 	"github.com/lejianwen/rustdesk-api/v2/service"
 )
 
-// 不需要记录日志的路径
+// 不需要记录日志的路径（登录类 + POST 查询类）
 var skipOpLogPaths = map[string]bool{
 	"/api/admin/login":         true,
 	"/api/admin/logout":        true,
 	"/api/admin/captcha":       true,
 	"/api/admin/login-options": true,
 	"/api/admin/oidc/auth":     true,
+	// 以下 POST 接口实际是查询操作，不修改数据
+	"/api/admin/peer/simpleData":  true,
+	"/api/admin/user/myOauth":     true,
+	"/api/admin/user/groupUsers":  true,
 }
 
 // OperationLog 操作日志中间件，记录所有 POST 写操作
