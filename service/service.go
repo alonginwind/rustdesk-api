@@ -25,6 +25,7 @@ type Service struct {
 	*LdapService
 	*AppService
 	*PeerStrategyService
+	*OperationLogService
 }
 
 type Dependencies struct {
