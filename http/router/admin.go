@@ -29,6 +29,7 @@ func Init(g *gin.Engine) {
 	adg.GET("/my/address_book_collection/list_shared", (&my.AddressBookCollection{}).ListShared)
 
 	adg.Use(middleware.BackendUserAuth())
+	adg.Use(middleware.OperationLog())
 	//FileBind(adg)
 	UserBind(adg)
 	GroupBind(adg)
@@ -54,6 +55,7 @@ func Init(g *gin.Engine) {
 	RustdeskCmdBind(adg)
 	DeviceGroupBind(adg)
 	PeerStrategyBind(adg)
+	OperationLogBind(adg)
 	//访问静态文件
 	//g.StaticFS("/upload", http.Dir(global.Config.Gin.ResourcesPath+"/upload"))
 }
@@ -327,6 +329,14 @@ func PeerStrategyBind(rg *gin.RouterGroup) {
 		aR.POST("/delete", cont.Delete)
 		aR.GET("/default", cont.Default)
 		aR.POST("/default/update", cont.UpdateDefault)
+	}
+}
+
+func OperationLogBind(rg *gin.RouterGroup) {
+	aR := rg.Group("/operation_log").Use(middleware.AdminPrivilege())
+	{
+		cont := &admin.OperationLog{}
+		aR.GET("/list", cont.List)
 	}
 }
 
