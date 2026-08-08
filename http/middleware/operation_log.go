@@ -103,12 +103,20 @@ func parsePath(path string) (resource, op string) {
 		op = "unknown"
 	}
 
-	// 统一操作名格式：camelCase → snake_case
+	// 统一操作名格式：camelCase → snake_case（长模式优先匹配）
+	op = strings.ReplaceAll(op, "batchCreateFromPeers", "batch_create_from_peers")
+	op = strings.ReplaceAll(op, "batchUpdateTags", "batch_update_tags")
+	op = strings.ReplaceAll(op, "shareByWebClient", "share_by_web_client")
+	op = strings.ReplaceAll(op, "bindConfirm", "bind_confirm")
+	op = strings.ReplaceAll(op, "changeCurPwd", "change_cur_pwd")
+	op = strings.ReplaceAll(op, "updatePassword", "update_password")
 	op = strings.ReplaceAll(op, "batchDelete", "batch_delete")
 	op = strings.ReplaceAll(op, "batchCreate", "batch_create")
 	op = strings.ReplaceAll(op, "batchUpdate", "batch_update")
-	op = strings.ReplaceAll(op, "changeCurPwd", "change_cur_pwd")
-	op = strings.ReplaceAll(op, "updatePassword", "update_password")
+	op = strings.ReplaceAll(op, "cmdCreate", "cmd_create")
+	op = strings.ReplaceAll(op, "cmdDelete", "cmd_delete")
+	op = strings.ReplaceAll(op, "cmdUpdate", "cmd_update")
+	op = strings.ReplaceAll(op, "sendCmd", "send_cmd")
 
 	return
 }
