@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/google/uuid"
 	"github.com/lejianwen/rustdesk-api/v2/model"
+	"github.com/lejianwen/rustdesk-api/v2/model/custom_types"
 	"gorm.io/gorm"
 	"strings"
 	"sync"
@@ -418,7 +419,7 @@ func (s *AddressBookService) ApplyPresetToAddressBook(peerId, os, abName, abAlia
 	}
 
 	// 不存在，删除该设备在其他全员集合中的旧条目
-	DB.Where("id = ? AND user_id = 1 AND collection_id != ?", peerId, collection.Id).Delete(&model.AddressBook{})
+	DB.Where("id = ? AND user_id = 1", peerId).Delete(&model.AddressBook{})
 
 	// 创建新条目
 	platform := s.PlatformFromOs(os)
@@ -428,9 +429,14 @@ func (s *AddressBookService) ApplyPresetToAddressBook(peerId, os, abName, abAlia
 		Hostname:     hostname,
 		Username:     username,
 		Platform:     platform,
+		Tags:         custom_types.AutoJson("[]"),
+		UserId:       1,
 		CollectionId: collection.Id,
 	}
-	DB.Create(ab)
+	if err := DB.Create(ab).Error; err != nil {
+		// 创建失败时静默处理，不影响 sysinfo 主流程
+		_ = err
+	}
 }
 
 // GetPresetValuesForPeer 从地址簿中查询设备的预设信息
