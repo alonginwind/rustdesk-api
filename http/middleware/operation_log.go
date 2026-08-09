@@ -53,6 +53,14 @@ func OperationLog() gin.HandlerFunc {
 			c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 		}
 
+		// sendCmd 接口中部分 cmd 是查询操作，不记录日志
+		if c.Request.URL.Path == "/api/admin/rustdesk/sendCmd" {
+			if isReadOnlyCmd(bodyStr) {
+				c.Next()
+				return
+			}
+		}
+
 		// 截断过长的请求体（如上传图片）
 		if len(bodyStr) > 2000 {
 			bodyStr = bodyStr[:2000] + "...[truncated]"
@@ -119,4 +127,28 @@ func parsePath(path string) (resource, op string) {
 	op = strings.ReplaceAll(op, "sendCmd", "send_cmd")
 
 	return
+}
+
+// isReadOnlyCmd 判断 sendCmd 请求体中的 cmd 是否为只读操作
+// 只读命令：
+//   blocklist/blacklist - 查黑名单
+//   u - 查用量
+//   rs - 查中继服务器
+//   ml - 查必须登录状态
+//   h - 查帮助/能力
+//   aur - 查中继状态（带 option 时是写操作，不能跳过）
+func isReadOnlyCmd(body string) bool {
+	// 始终是读操作的命令
+	for _, cmd := range []string{"blocklist", "blacklist", "u", "rs", "ml", "h"} {
+		if strings.Contains(body, `"cmd":"`+cmd+`"`) ||
+			strings.Contains(body, `"cmd": "`+cmd+`"`) {
+			return true
+		}
+	}
+	// aur 不带 option 时是读操作
+	if (strings.Contains(body, `"cmd":"aur"`) || strings.Contains(body, `"cmd": "aur"`)) &&
+		!strings.Contains(body, `"option"`) {
+		return true
+	}
+	return false
 }
