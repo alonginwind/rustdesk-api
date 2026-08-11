@@ -149,7 +149,13 @@ func (ct *AddressBook) BatchCreate(c *gin.Context) {
 		mu.Lock()
 		ex := service.AllService.AddressBookService.InfoByUserIdAndIdAndCid(t.UserId, t.Id, t.CollectionId)
 		if ex.RowId == 0 {
-			service.AllService.AddressBookService.Create(t)
+			err := service.AllService.AddressBookService.Create(t)
+			if err == nil {
+				service.AllService.AddressBookService.CleanUp(t.Id, t.CollectionId)
+			}
+		} else {
+			t.RowId = ex.RowId
+			service.AllService.AddressBookService.Update(t)
 		}
 		mu.Unlock()
 	}
@@ -292,6 +298,11 @@ func (ct *AddressBook) Delete(c *gin.Context) {
 	}
 	err := service.AllService.AddressBookService.Delete(t)
 	if err == nil {
+		// 同步删除 peers 表中的对应条目
+		peer := service.AllService.PeerService.FindById(t.Id)
+		if peer.RowId > 0 {
+			_ = service.AllService.PeerService.Delete(peer)
+		}
 		response.Success(c, nil)
 		return
 	}

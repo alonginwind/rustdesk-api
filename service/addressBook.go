@@ -144,6 +144,12 @@ func (s *AddressBookService) Create(u *model.AddressBook) error {
 	res := DB.Create(u).Error
 	return res
 }
+
+// 清理在其他全员集合中的旧条目
+func (s *AddressBookService) CleanUp(peerId string, collectionId uint) {
+	DB.Where("id = ? AND user_id = 1 AND collection_id != ?", peerId, collectionId).Delete(&model.AddressBook{})
+}
+
 func (s *AddressBookService) Delete(u *model.AddressBook) error {
 	return DB.Delete(u).Error
 }
@@ -418,9 +424,6 @@ func (s *AddressBookService) ApplyPresetToAddressBook(peerId, os, abName, abAlia
 		return
 	}
 
-	// 不存在，删除该设备在其他全员集合中的旧条目
-	DB.Where("id = ? AND user_id = 1", peerId).Delete(&model.AddressBook{})
-
 	// 创建新条目
 	platform := s.PlatformFromOs(os)
 	ab := &model.AddressBook{
@@ -436,6 +439,9 @@ func (s *AddressBookService) ApplyPresetToAddressBook(peerId, os, abName, abAlia
 	if err := DB.Create(ab).Error; err != nil {
 		// 创建失败时静默处理，不影响 sysinfo 主流程
 		_ = err
+	} else {
+		// 删除该设备在其他全员集合中的旧条目
+		s.CleanUp(peerId, collection.Id)
 	}
 }
 
