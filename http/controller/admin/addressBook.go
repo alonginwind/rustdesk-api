@@ -298,10 +298,10 @@ func (ct *AddressBook) Delete(c *gin.Context) {
 	}
 	err := service.AllService.AddressBookService.Delete(t)
 	if err == nil {
-		// 同步删除 peers 表中的对应条目
+		// 置空 peers 表中的别名
 		peer := service.AllService.PeerService.FindById(t.Id)
 		if peer.RowId > 0 {
-			_ = service.AllService.PeerService.Delete(peer)
+			_ = service.AllService.PeerService.ClearAlias(peer.RowId)
 		}
 		response.Success(c, nil)
 		return
