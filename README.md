@@ -14,11 +14,12 @@
 <img src="https://github.com/lejianwen/rustdesk-api/actions/workflows/build.yml/badge.svg"/>
 </div>
 
-## 搭配[lejianwen/rustdesk-server]使用更佳。
-> [lejianwen/rustdesk-server]fork自RustDesk Server官方仓库
+## 搭配[alonginwind/rustdesk-server]使用更佳。
+> [alonginwind/rustdesk-server]fork自lejianwen/rustdesk-server
 > 1. 解决了使用API链接超时问题
 > 2. 可以强制登录后才能发起链接
 > 3. 支持客户端websocket
+> 4. 修复局域网多台设备开启websocket的bug
 
 
 
