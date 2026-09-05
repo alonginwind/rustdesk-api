@@ -265,6 +265,11 @@ func (ct *AddressBook) Update(c *gin.Context) {
 		response.Fail(c, 101, response.TranslateMsg(c, "OperationFailed")+err.Error())
 		return
 	}
+	// 同步更新 peers 表中的别名
+	peer := service.AllService.PeerService.FindById(t.Id)
+	if peer.RowId > 0 {
+		_ = service.AllService.PeerService.UpdateAlias(peer.RowId, t.Alias)
+	}
 	response.Success(c, nil)
 }
 
