@@ -23,7 +23,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const DatabaseVersion = 268
+const DatabaseVersion = 269
 
 // @title 管理系统API
 // @version 1.0

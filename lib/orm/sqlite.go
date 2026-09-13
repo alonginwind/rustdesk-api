@@ -14,7 +14,7 @@ type SqliteConfig struct {
 }
 
 func NewSqlite(sqliteConf *SqliteConfig, logwriter logger.Writer) *gorm.DB {
-	db, err := gorm.Open(sqlite.Open("./data/rustdeskapi.db"), &gorm.Config{
+	db, err := gorm.Open(sqlite.Open("./data/rustdeskapi.db?_txlock=immediate"), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,
 		Logger: logger.New(
 			logwriter, // io writer

@@ -3,14 +3,32 @@ package api
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
+	"github.com/lejianwen/rustdesk-api/v2/global"
 	request "github.com/lejianwen/rustdesk-api/v2/http/request/api"
 	"github.com/lejianwen/rustdesk-api/v2/http/response"
 	"github.com/lejianwen/rustdesk-api/v2/model"
 	"github.com/lejianwen/rustdesk-api/v2/service"
+	"net/http"
 	"time"
 )
 
 type Audit struct {
+}
+
+// auditStored answers a post that got stored. A 2xx body that is not empty reads
+// to the client as an unknown outcome, and it retries -- every retry that the
+// nonce check below does not catch lands as one more record. The server the
+// clients were written against answers with an empty body, so do the same.
+func auditStored(c *gin.Context) {
+	c.Status(http.StatusOK)
+}
+
+// auditFailed keeps a rejected post retryable: the client retries a 2xx whose
+// body is {"error": ...}. Nothing was stored and no nonce was recorded, so the
+// next attempt stores the record instead of it being lost.
+func auditFailed(c *gin.Context, err error) {
+	global.Logger.Warn("audit", err)
+	c.JSON(http.StatusOK, response.ErrorResponse{Error: err.Error()})
 }
 
 // AuditConn
@@ -35,27 +53,33 @@ func (a *Audit) AuditConn(c *gin.Context) {
 	fmt.Println(ttt)*/
 	ac := af.ToAuditConn()
 	if af.Action == model.AuditActionNew {
-		service.AllService.AuditService.CreateAuditConn(ac)
+		err = service.AllService.AuditService.CreateAuditConnIfNonceUnique(ac)
 	} else if af.Action == model.AuditActionClose {
 		ex := service.AllService.AuditService.InfoByPeerIdAndConnId(af.Id, af.ConnId)
 		if ex.Id != 0 {
 			ex.CloseTime = time.Now().Unix()
-			service.AllService.AuditService.UpdateAuditConn(ex)
+			err = service.AllService.AuditService.UpdateAuditConn(ex)
 		}
 	} else if af.Action == "" {
 		ex := service.AllService.AuditService.InfoByPeerIdAndConnId(af.Id, af.ConnId)
 		if ex.Id != 0 {
 			up := &model.AuditConn{
-				IdModel:   model.IdModel{Id: ex.Id},
-				FromPeer:  ac.FromPeer,
-				FromName:  ac.FromName,
-				SessionId: ac.SessionId,
-				Type:      ac.Type,
+				IdModel:     model.IdModel{Id: ex.Id},
+				FromPeer:    ac.FromPeer,
+				FromName:    ac.FromName,
+				SessionId:   ac.SessionId,
+				Type:        ac.Type,
+				PrimaryAuth: ac.PrimaryAuth,
+				TwoFactor:   ac.TwoFactor,
 			}
-			service.AllService.AuditService.UpdateAuditConn(up)
+			err = service.AllService.AuditService.UpdateAuditConn(up)
 		}
 	}
-	response.Success(c, "")
+	if err != nil {
+		auditFailed(c, err)
+		return
+	}
+	auditStored(c)
 }
 
 // AuditFile
@@ -79,6 +103,10 @@ func (a *Audit) AuditFile(c *gin.Context) {
 	//c.ShouldBindBodyWith(ttt, binding.JSON)
 	//fmt.Println(ttt)
 	af := aff.ToAuditFile()
-	service.AllService.AuditService.CreateAuditFile(af)
-	response.Success(c, "")
+	err = service.AllService.AuditService.CreateAuditFileIfNonceUnique(af)
+	if err != nil {
+		auditFailed(c, err)
+		return
+	}
+	auditStored(c)
 }
