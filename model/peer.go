@@ -19,6 +19,7 @@ type Peer struct {
 	// 预设地址簿信息，用于心跳下发到被控端
 	PresetAbName  string `json:"preset_ab_name" gorm:"default:'';not null;"`
 	PresetAbAlias string `json:"preset_ab_alias" gorm:"default:'';not null;"`
+	PresetDevUsrName string `json:"preset_dev_usrname" gorm:"default:'';not null;"`
 	PresetDevName string `json:"preset_dev_name" gorm:"default:'';not null;"`
 	TimeModel
 }

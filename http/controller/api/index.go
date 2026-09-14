@@ -81,8 +81,8 @@ func (i *Index) Heartbeat(c *gin.Context) {
 	}
 
 	// 检查地址簿预设信息是否有变化（集合名称、别名、主机名）
-	abName, abAlias, abHostname := service.AllService.AddressBookService.GetPresetValuesForPeer(info.Id)
-	presetChanged := abName != peer.PresetAbName || abAlias != peer.PresetAbAlias || abHostname != peer.PresetDevName
+	abName, abAlias, abUsrname, abHostname := service.AllService.AddressBookService.GetPresetValuesForPeer(info.Id)
+	presetChanged := abName != peer.PresetAbName || abAlias != peer.PresetAbAlias || abUsrname != peer.PresetDevUsrName || abHostname != peer.PresetDevName
 	if presetChanged {
 		if !strategyChanged {
 			if hasStrategy {
@@ -94,9 +94,10 @@ func (i *Index) Heartbeat(c *gin.Context) {
 		// 始终写入（包括空值），确保客户端能清除旧预设
 		mergedConfig["preset-address-book-name"] = abName
 		mergedConfig["preset-address-book-alias"] = abAlias
+		mergedConfig["preset-device-username"] = abUsrname
 		mergedConfig["preset-device-name"] = abHostname
 		// 更新 peer 表中的预设值，用于下次对比
-		service.AllService.PeerService.UpdatePresets(peer.RowId, abName, abAlias, abHostname)
+		service.AllService.PeerService.UpdatePresets(peer.RowId, abName, abAlias, abUsrname, abHostname)
 	}
 
 	if strategyChanged || presetChanged {

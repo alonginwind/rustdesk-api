@@ -268,7 +268,7 @@ func (ct *AddressBook) Update(c *gin.Context) {
 	// 同步更新 peers 表中的别名
 	peer := service.AllService.PeerService.FindById(t.Id)
 	if peer.RowId > 0 {
-		_ = service.AllService.PeerService.UpdateAlias(peer.RowId, t.Alias)
+		_ = service.AllService.PeerService.UpdateAlias(peer.RowId, t.Alias, t.Username, t.Hostname)
 	}
 	response.Success(c, nil)
 }
