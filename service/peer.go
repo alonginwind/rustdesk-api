@@ -189,7 +189,7 @@ func (ps *PeerService) UpdatePresets(rowId uint, presetAbName, presetAbAlias, pr
 	return DB.Model(&model.Peer{}).Where("row_id = ?", rowId).Updates(map[string]interface{}{
 		"preset_ab_name":  presetAbName,
 		"preset_ab_alias": presetAbAlias,
-		"preset_dev_usrname": presetDevUsrName,
+		"preset_dev_usr_name": presetDevUsrName,
 		"preset_dev_name": presetDevName,
 	}).Error
 }
