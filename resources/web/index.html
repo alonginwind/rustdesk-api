@@ -41,6 +41,8 @@
        fallback for when the wasm bridge is unavailable; the same classic-script rule applies, so
        window.fzstd exists while load_bridge.js is evaluated. -->
   <script src="fzstd.js"></script>
+  <!-- Peer sharing: resolves share_token and redirects before Flutter loads. -->
+  <script src="share.js"></script>
   <script type="module" src="load_bridge.js"></script>
   <script src="flutter_bootstrap.js" defer></script>
 </body>
