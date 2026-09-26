@@ -1,4 +1,4 @@
-const VERSION='1.5.0';const BUILD_DATE='2026-09-30 09:01:43';const APP_NAME='RustDesk';const DEBUG=(()=>{try{return new URLSearchParams(location.search).has('debug');}catch(e){return false;}})();function dbg(...args){if(DEBUG)console.log(...args);}
+const VERSION='1.5.0';const BUILD_DATE='2026-09-30 09:05:57';const APP_NAME='RustDesk';const DEBUG=(()=>{try{return new URLSearchParams(location.search).has('debug');}catch(e){return false;}})();function dbg(...args){if(DEBUG)console.log(...args);}
 const isBytes=(v)=>v instanceof Uint8Array&&v.length>0;const byteLen=(v)=>(isBytes(v)?v.length+' bytes':'null');function dbgFrame(what,data,preview){if(!DEBUG){return;}
 const head=Array.from(data.slice(0,preview===undefined?20:preview));dbg('[WebBridge] '+what+', bytes=',data.length,'first:',head);}
 function generateId(){const r=crypto.getRandomValues(new Uint32Array(1))[0];return String(1000000000+(r%1000000000));}
@@ -211,6 +211,7 @@ let pendingRemember=false;function handleHash(hashBytes){const hf=parseRendezvou
 let hashPwd;if(RD){hashPwd=RD.hashPassword(pwd,salt,challenge);}else{hashPwd=sha256(new Uint8Array([...new TextEncoder().encode(pwd),...new TextEncoder().encode(salt)]));hashPwd=sha256(new Uint8Array([...hashPwd,...new TextEncoder().encode(challenge)]));}
 console.log('[WebBridge] Sending LoginRequest with password hash');sendLoginRequest(hashPwd);}
 function getWebDisplayName(){try{const ui=localStorage.getItem('option:local:user_info');if(ui){const obj=JSON.parse(ui);const name=(obj.display_name||obj.name||'').trim();if(name)return name;}}catch(e){}
+try{const src=localStorage.getItem('option:local:share_source');if(src){pendingRemember=true;return src;}}catch(e){}
 return'';}
 function sendLoginRequest(hashPwd){const myId=localStorage.getItem('id')||'';const inner=pbConcat(pbString(1,sessionState.peerId),pbBytes(2,hashPwd),pbString(4,myId),pbString(5,getWebDisplayName()),pbString(11,VERSION),pbString(13,'webclient'));let connInner;if(sessionState.isFileTransfer){connInner=pbConcat(inner,pbBytes(7,new Uint8Array(0)));}else if(sessionState.isViewCamera){connInner=pbConcat(inner,pbBytes(15,new Uint8Array(0)));}else if(sessionState.isTerminal){connInner=pbConcat(inner,pbBytes(16,new Uint8Array(0)));}else{connInner=inner;}
 relaySend(wrapMsg(MSG_MSG.LOGIN_REQUEST,connInner));}
