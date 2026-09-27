@@ -52,6 +52,7 @@ func (a *Audit) AuditConn(c *gin.Context) {
 	c.ShouldBindBodyWith(ttt, binding.JSON)
 	fmt.Println(ttt)*/
 	ac := af.ToAuditConn()
+	ac.Ip = c.ClientIP()
 	if af.Action == model.AuditActionNew {
 		err = service.AllService.AuditService.CreateAuditConnIfNonceUnique(ac)
 	} else if af.Action == model.AuditActionClose {
@@ -103,6 +104,7 @@ func (a *Audit) AuditFile(c *gin.Context) {
 	//c.ShouldBindBodyWith(ttt, binding.JSON)
 	//fmt.Println(ttt)
 	af := aff.ToAuditFile()
+	af.Ip = c.ClientIP()
 	err = service.AllService.AuditService.CreateAuditFileIfNonceUnique(af)
 	if err != nil {
 		auditFailed(c, err)
