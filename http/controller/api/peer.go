@@ -35,14 +35,15 @@ func (p *Peer) SysInfo(c *gin.Context) {
 	if pe.RowId == 0 {
 		pe = f.ToPeer()
 		pe.UserId = service.AllService.UserService.FindLatestUserIdFromLoginLogByUuid(pe.Uuid, pe.Id)
-		if pe.UserId == 0 { //只同步未登录的被控端
+		if pe.UserId == 0 || f.PresetAddressBookAlias != "" { //只同步未登录或者虽登录但手动注册的被控端
+			pe.PresetAbAlias = f.PresetAddressBookAlias
 			err = service.AllService.PeerService.Create(pe)
 			if err != nil {
 				response.Error(c, response.TranslateMsg(c, "OperationFailed")+err.Error())
 				return
 			}
 		} else {
-			//已登录设备不入库，返回SYSINFO_UPDATED避免客户端每120秒重试
+			//已登录并且未手动注册的设备不入库，返回SYSINFO_UPDATED避免客户端每120秒重试
 			c.String(http.StatusOK, "SYSINFO_UPDATED")
 			return
 		}

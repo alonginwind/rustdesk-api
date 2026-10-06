@@ -55,7 +55,7 @@ func (i *Index) Heartbeat(c *gin.Context) {
 		return
 	}
 	peer.UserId = service.AllService.UserService.FindLatestUserIdFromLoginLogByUuid(peer.Uuid, peer.Id)
-	if peer.UserId == 0 || peer.Alias != "" {
+	if peer.UserId == 0 || peer.Alias != "" || peer.PresetAbAlias != "" {
 		//如果在40s以内则不更新
 		if time.Now().Unix()-peer.LastOnlineTime >= 30 {
 			upp := &model.Peer{RowId: peer.RowId, LastOnlineTime: time.Now().Unix(), LastOnlineIp: c.ClientIP()}
