@@ -48,7 +48,7 @@ func (p *Peer) SysInfo(c *gin.Context) {
 		}
 	} else {
 		pe.UserId = service.AllService.UserService.FindLatestUserIdFromLoginLogByUuid(pe.Uuid, pe.Id)
-		if pe.UserId == 0 { //只同步未登录的被控端
+		if pe.UserId == 0 || pe.Alias != "" { //只同步未登录或者虽登录但已绑定的被控端
 			fpe.RowId = pe.RowId
 			fpe.UserId = pe.UserId
 			err = service.AllService.PeerService.Update(fpe)
@@ -57,7 +57,7 @@ func (p *Peer) SysInfo(c *gin.Context) {
 				return
 			}
 		} else {
-			//已登录设备不入库，返回SYSINFO_UPDATED避免客户端每120秒重试
+			//已登录并且未绑定的设备不入库，返回SYSINFO_UPDATED避免客户端每120秒重试
 			c.String(http.StatusOK, "SYSINFO_UPDATED")
 			return
 		}
