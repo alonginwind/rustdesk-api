@@ -83,18 +83,6 @@ func (as *AuditService) InfoByPeerIdAndConnId(peerId string, connId int64) (res 
 	return
 }
 
-// ConnInfoByNonce finds a record by the tag the client gives each of its posts.
-// A client re-sends a post it is unsure got stored, and the nonce is what tells
-// that resend from a new connection. Posts predating the nonce send "", which
-// is never looked up, so nothing is deduped for them.
-func (as *AuditService) ConnInfoByNonce(nonce string) (res *model.AuditConn) {
-	res = &model.AuditConn{}
-	if nonce != "" {
-		DB.Where("nonce = ?", nonce).First(res)
-	}
-	return
-}
-
 // ConnInfoById
 func (as *AuditService) ConnInfoById(id uint) (res *model.AuditConn) {
 	res = &model.AuditConn{}
@@ -151,15 +139,6 @@ func (as *AuditService) fileNonceExists(tx *gorm.DB, nonce string) (bool, error)
 		return false, err
 	}
 	return count > 0, nil
-}
-
-// FileInfoByNonce see ConnInfoByNonce
-func (as *AuditService) FileInfoByNonce(nonce string) (res *model.AuditFile) {
-	res = &model.AuditFile{}
-	if nonce != "" {
-		DB.Where("nonce = ?", nonce).First(res)
-	}
-	return
 }
 
 func (as *AuditService) DeleteAuditFile(u *model.AuditFile) error {
