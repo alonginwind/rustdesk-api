@@ -58,7 +58,7 @@ func (i *Index) Heartbeat(c *gin.Context) {
 	if peer.UserId == 0 || peer.Alias != "" || peer.PresetAbAlias != "" {
 		//如果在40s以内则不更新
 		if time.Now().Unix()-peer.LastOnlineTime >= 30 {
-			upp := &model.Peer{RowId: peer.RowId, LastOnlineTime: time.Now().Unix(), LastOnlineIp: c.ClientIP()}
+			upp := &model.Peer{RowId: peer.RowId, UserId: peer.UserId, LastOnlineTime: time.Now().Unix(), LastOnlineIp: c.ClientIP()}
 			service.AllService.PeerService.Update(upp)
 		}
 	} else {//删除已登录的未绑定被控端
