@@ -85,6 +85,7 @@ POST /admin/peer_strategy/default/update
 | `allow-remote-config-modification` | 允许远程修改配置 | `Y`, `N` |
 | `allow-remote-cm-modification` | 允许控制端点击接受窗口（连接管理窗口）来接受连接、修改权限等 | `Y`, `N` |
 | `enable-perm-change-in-accept-window` | 允许用户在接受窗口（连接管理窗口）中接受传入会话前更改权限 | `Y`, `N` |
+| `hide-elevate-button-in-accept-window` | 隐藏接受窗口中的"接受并提权"按钮（便携版交给普通用户时，用户无管理员凭据无法提权，隐藏后由控制端在会话中请求提权） | `Y`, `N` |
 | `one-way-clipboard-redirection` | 禁用从被控端到控制端的剪贴板同步（被控端，>= 1.3.1） | `Y`, `N` |
 | `one-way-file-transfer` | 禁用从被控端到控制端的文件传输（被控端，>= 1.3.1） | `Y`, `N` |
 | `sync-init-clipboard` | 建立连接时同步初始剪贴板（仅从控制端到被控端，>= 1.3.1） | `Y`, `N` |
@@ -107,6 +108,7 @@ POST /admin/peer_strategy/default/update
 | `allow-command-line-settings-when-settings-disabled` | 禁用设置时仍允许命令行配置（>= 1.4.7） | `Y`, `N` |
 | `allow-deep-link-password` | 允许通过 deep link 设置密码（`rustdesk://password/xxx`，仅 Android/iOS） | `Y`, `N` |
 | `allow-deep-link-server-settings` | 允许通过 deep link 导入服务器配置（`rustdesk://config/xxx`，仅 Android/iOS） | `Y`, `N` |
+| `reset-pwd` | 重置被控端本地永久密码（一次性命令，设为 `Y` 后清除本地密码使其回退到预设密码，不会持久化到配置文件） | `Y` |
 
 ### 网络设置
 
@@ -242,9 +244,25 @@ POST /admin/peer_strategy/default/update
 | `enable-confirm-closing-tabs` | 关闭多个远程标签前确认 | `Y`, `N` |
 | `enable-open-new-connections-in-tabs` | 新连接在标签页中打开 | `Y`, `N` |
 | `allow-ask-for-note` | 连接结束时提示输入备注（>= 1.4.4） | `Y`, `N` |
+| `allow-sync-clipboard-between-sessions` | 允许在已连接的远程会话之间同步剪贴板（控制端，剪贴板内容可在多个远程窗口间传递） | `Y`, `N` |
 | `pre-elevate-service` | Windows 便携版自动提权运行 | `Y`, `N` |
 | `remove-preset-password-warning` | 移除预设密码的安全警告 | `Y`, `N` |
 | `enable-check-update` | 启用检查更新 | `Y`, `N` |
+
+### HARD_SETTINGS（自定义客户端硬配置）
+
+以下配置项来源于客户端 `HARD_SETTINGS`，通常通过自定义客户端配置的 `data` 段预设。当 `HARD_SETTINGS` 中未预设对应 key 时，客户端会回退到 `Config::get_option` 读取，因此可以通过策略 `config_options` 下发生效。
+
+> **优先级**：自定义客户端 `HARD_SETTINGS` 硬编码值 > 策略 `config_options` 下发值 > 内置默认值。如果自定义客户端已在 `data` 段中预设了某个 key，则策略下发无法覆盖。
+
+| 配置项 | 说明 | 可选值 |
+|--------|------|--------|
+| `conn-type` | 连接类型限制（仅 `incoming` 可通过策略生效，`outgoing` 必须在自定义客户端 `HARD_SETTINGS` 中预设） | `incoming`（仅被控）；不设则双向均可 |
+| `disable-tcp-listen` | 禁用 TCP 监听（仅使用 UDP 打洞和中继） | `Y`, `N` |
+| `disable-settings` | 禁用设置页面（隐藏所有设置选项卡） | `Y`, `N` |
+| `disable-ab` | 禁用地址簿功能 | `Y`, `N` |
+| `disable-account` | 禁用账户功能（登录/注册） | `Y`, `N` |
+| `disable-installation` | 禁用安装功能（仅允许便携运行） | `Y`, `N` |
 
 ### UI/界面设置
 
