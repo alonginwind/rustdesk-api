@@ -157,17 +157,13 @@ func (ps *PeerService) BatchDelete(ids []uint) error {
 
 // Update 更新
 func (ps *PeerService) Update(u *model.Peer) error {
-	//先更新大部分字段，零值会被忽略
-	if err := DB.Model(u).Updates(u).Error; err != nil {
-		return err
-	}
+	//零值字段会被忽略；user_id 需要强制写入时请使用 UpdateUserId
+	return DB.Model(u).Updates(u).Error
+}
 
-	//单独更新需要强制写入零值的字段
-	if err := DB.Model(u).Where("row_id = ?", u.RowId).Update("user_id", 0).Error; err != nil {
-		return err
-	}
-
-	return nil
+// UpdateUserId 显式更新设备所属用户id（支持写入0）
+func (ps *PeerService) UpdateUserId(rowId uint, userId uint) error {
+	return DB.Model(&model.Peer{}).Where("row_id = ?", rowId).Update("user_id", userId).Error
 }
 
 // ClearAlias 置空设备别名（支持空值写入，struct Updates 无法做到）

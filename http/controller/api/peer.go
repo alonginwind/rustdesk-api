@@ -53,6 +53,10 @@ func (p *Peer) SysInfo(c *gin.Context) {
 			fpe.RowId = pe.RowId
 			fpe.UserId = pe.UserId
 			err = service.AllService.PeerService.Update(fpe)
+			if err == nil {
+				// Update 会忽略零值，这里显式同步 user_id（未登录时为0）
+				err = service.AllService.PeerService.UpdateUserId(pe.RowId, pe.UserId)
+			}
 			if err != nil {
 				response.Error(c, response.TranslateMsg(c, "OperationFailed")+err.Error())
 				return
