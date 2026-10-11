@@ -9,6 +9,7 @@ import (
 	adminReq "github.com/lejianwen/rustdesk-api/v2/http/request/admin"
 	"github.com/lejianwen/rustdesk-api/v2/http/response"
 	"github.com/lejianwen/rustdesk-api/v2/service"
+	"github.com/lejianwen/rustdesk-api/v2/utils"
 )
 
 type Oauth struct {
@@ -82,6 +83,13 @@ func (o *Oauth) Confirm(c *gin.Context) {
 		return
 	}
 	u := service.AllService.UserService.CurUser(c)
+
+	// 禁止默认密码用户确认授权（需先改密）
+	if ok, _, _ := utils.VerifyPassword(u.Password, utils.DefaultInitPassword); ok {
+		response.Fail(c, 101, response.TranslateMsg(c, "DefaultPwdLoginDisabled"))
+		return
+	}
+
 	v.UserId = u.Id
 	service.AllService.OauthService.SetOauthCache(j.Code, v, 0)
 	response.Success(c, v)
