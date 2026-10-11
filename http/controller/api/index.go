@@ -69,6 +69,11 @@ func (i *Index) Heartbeat(c *gin.Context) {
 	resp := gin.H{}
 	deviceStrategy := service.AllService.PeerStrategyService.FindByPeerId(info.Id)
 	defaultStrategy := service.AllService.PeerStrategyService.FindDefault()
+	// 预设值提前获取：默认策略只对已注册（地址簿别名非空）的设备下发
+	abName, abAlias, abUsrname, abHostname := service.AllService.AddressBookService.GetPresetValuesForPeer(info.Id)
+	if abAlias == "" { // 未注册设备视为无默认策略，仅设备策略可下发
+		defaultStrategy = &model.PeerStrategy{}
+	}
 	// 合并策略：设备策略 > 默认策略
 	effectiveModifiedAt := service.AllService.PeerStrategyService.GetEffectiveModifiedAt(deviceStrategy, defaultStrategy)
 	// 如果任一策略存在，且 modified_at 有变化，则下发合并后的配置
@@ -81,7 +86,6 @@ func (i *Index) Heartbeat(c *gin.Context) {
 	}
 
 	// 检查地址簿预设信息是否有变化（集合名称、别名、主机名）
-	abName, abAlias, abUsrname, abHostname := service.AllService.AddressBookService.GetPresetValuesForPeer(info.Id)
 	presetChanged := abName != peer.PresetAbName || abAlias != peer.PresetAbAlias || abUsrname != peer.PresetDevUsrName || abHostname != peer.PresetDevName
 	if presetChanged {
 		if !strategyChanged {
