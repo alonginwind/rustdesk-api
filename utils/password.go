@@ -5,6 +5,9 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// DefaultInitPassword is the initial password assigned to a user when none is provided.
+const DefaultInitPassword = "1234"
+
 // EncryptPassword hashes the input password using bcrypt.
 // An error is returned if hashing fails.
 func EncryptPassword(password string) (string, error) {

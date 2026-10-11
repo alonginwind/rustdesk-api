@@ -146,6 +146,11 @@ description = "Password login disabled."
 one = "密码登录已禁用。"
 other = "密码登录已禁用。"
 
+[DefaultPwdLoginDisabled]
+description = "Login with the initial password is disabled."
+one = "禁止使用初始密码登录，请先修改密码。"
+other = "禁止使用初始密码登录，请先修改密码。"
+
 [CannotShareToSelf]
 description = "Cannot share to self."
 one = "不能共享给自己。"
