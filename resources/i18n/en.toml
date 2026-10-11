@@ -144,6 +144,11 @@ description = "Password login disabled."
 one = "Password login disabled."
 other = "Password login disabled."
 
+[DefaultPwdLoginDisabled]
+description = "Login with the initial password is disabled."
+one = "Login with the initial password is disabled. Please change your password first."
+other = "Login with the initial password is disabled. Please change your password first."
+
 [CannotShareToSelf]
 description = "Cannot share to self."
 one = "Cannot share to self."

@@ -153,6 +153,11 @@ description = "Password login disabled."
 one = "Вход по паролю отключен."
 other = "Вход по паролю отключен."
 
+[DefaultPwdLoginDisabled]
+description = "Login with the initial password is disabled."
+one = "Вход с начальным паролем запрещён. Сначала измените пароль."
+other = "Вход с начальным паролем запрещён. Сначала измените пароль."
+
 [CannotShareToSelf]
 description = "Cannot share to self."
 one = "Нельзя поделиться с собой."

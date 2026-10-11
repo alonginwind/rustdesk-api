@@ -10,6 +10,7 @@ import (
 	apiResp "github.com/lejianwen/rustdesk-api/v2/http/response/api"
 	"github.com/lejianwen/rustdesk-api/v2/model"
 	"github.com/lejianwen/rustdesk-api/v2/service"
+	"github.com/lejianwen/rustdesk-api/v2/utils"
 	"net/http"
 )
 
@@ -65,6 +66,12 @@ func (l *Login) Login(c *gin.Context) {
 
 	if !service.AllService.UserService.CheckUserEnable(u) {
 		response.Error(c, response.TranslateMsg(c, "UserDisabled"))
+		return
+	}
+
+	// 禁止使用初始默认密码登录
+	if ok, _, _ := utils.VerifyPassword(u.Password, utils.DefaultInitPassword); ok {
+		response.Error(c, response.TranslateMsg(c, "DefaultPwdLoginDisabled"))
 		return
 	}
 

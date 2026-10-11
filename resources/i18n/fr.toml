@@ -153,6 +153,11 @@ description = "Password login disabled."
 one = "Connexion par mot de passe désactivée."
 other = "Connexion par mot de passe désactivée."
 
+[DefaultPwdLoginDisabled]
+description = "Login with the initial password is disabled."
+one = "La connexion avec le mot de passe initial est désactivée. Veuillez d'abord le modifier."
+other = "La connexion avec le mot de passe initial est désactivée. Veuillez d'abord le modifier."
+
 [CannotShareToSelf]
 description = "Cannot share to self."
 one = "Impossible de partager avec soi-même."

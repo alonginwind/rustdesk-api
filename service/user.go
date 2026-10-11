@@ -176,7 +176,7 @@ func (us *UserService) Create(u *model.User) error {
 	u.Username = us.formatUsername(u.Username)
 	var err error
 	if u.Password == "" {
-		u.Password = "1234"
+		u.Password = utils.DefaultInitPassword
 	}
 	u.Password, err = utils.EncryptPassword(u.Password)
 	if err != nil {

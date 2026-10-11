@@ -153,6 +153,11 @@ description = "Password login disabled."
 one = "Inicio de sesión con contraseña deshabilitado."
 other = "Inicio de sesión con contraseña deshabilitado."
 
+[DefaultPwdLoginDisabled]
+description = "Login with the initial password is disabled."
+one = "No se permite iniciar sesión con la contraseña inicial. Cámbiela primero."
+other = "No se permite iniciar sesión con la contraseña inicial. Cámbiela primero."
+
 [CannotShareToSelf]
 description = "Cannot share to self."
 one = "No se puede compartir con uno mismo."
