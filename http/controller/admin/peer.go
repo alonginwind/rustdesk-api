@@ -190,6 +190,10 @@ func (ct *Peer) Delete(c *gin.Context) {
 	}
 	u := service.AllService.PeerService.InfoByRowId(f.RowId)
 	if u.RowId > 0 {
+		// 删除请求体只有 row_id，把设备ID并入操作日志详情
+		c.Set("op_log_extra", gin.H{
+			"id": u.Id,
+		})
 		err := service.AllService.PeerService.Delete(u)
 		if err == nil {
 			response.Success(c, nil)

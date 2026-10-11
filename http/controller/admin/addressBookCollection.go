@@ -163,6 +163,8 @@ func (abc *AddressBookCollection) Delete(c *gin.Context) {
 		response.Fail(c, 101, response.TranslateMsg(c, "ItemNotFound"))
 		return
 	}
+	// 删除请求体只有 id，把集合名并入操作日志详情
+	c.Set("op_log_extra", gin.H{"name": ex.Name})
 	err := service.AllService.AddressBookService.DeleteCollection(ex)
 	if err == nil {
 		response.Success(c, nil)

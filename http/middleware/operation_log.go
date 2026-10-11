@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"strings"
 
@@ -79,13 +80,21 @@ func OperationLog() gin.HandlerFunc {
 		ip := c.ClientIP()
 		resource, op := parsePath(path)
 
+		// 合并 handler 通过 c.Set("op_log_extra", ...) 补充的实体信息（如删除时请求体只有 ID）
+		detail := bodyStr
+		if v, ok := c.Get("op_log_extra"); ok {
+			if extra, ok := v.(gin.H); ok && len(extra) > 0 {
+				detail = mergeDetail(bodyStr, extra)
+			}
+		}
+
 		go func() {
 			_ = service.AllService.OperationLogService.Create(&model.OperationLog{
 				UserId:   user.Id,
 				Username: user.Username,
 				Op:       op,
 				Resource: resource,
-				Detail:   bodyStr,
+				Detail:   detail,
 				Ip:       ip,
 				Path:     path,
 			})
@@ -151,4 +160,20 @@ func isReadOnlyCmd(body string) bool {
 		return true
 	}
 	return false
+}
+
+// mergeDetail 把 handler 补充的实体信息合并进请求体摘要（JSON），同名键以补充值为准
+func mergeDetail(body string, extra gin.H) string {
+	m := map[string]interface{}{}
+	if err := json.Unmarshal([]byte(body), &m); err != nil {
+		m = map[string]interface{}{}
+	}
+	for k, v := range extra {
+		m[k] = v
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return body
+	}
+	return string(b)
 }
