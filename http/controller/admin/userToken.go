@@ -71,6 +71,15 @@ func (ct *UserToken) Delete(c *gin.Context) {
 		return
 	}
 	if l.Id > 0 {
+		// 补充操作日志详情：显示用户名
+		extra := gin.H{}
+		// 如果删除的是自己的token，直接用当前用户名；否则查询token所属用户
+		if l.UserId == u.Id {
+			extra["username"] = u.Username
+		} else if tokenUser := service.AllService.UserService.InfoById(l.UserId); tokenUser.Id > 0 {
+			extra["username"] = tokenUser.Username
+		}
+		c.Set("op_log_extra", extra)
 		err := service.AllService.UserService.DeleteToken(l)
 		if err == nil {
 			response.Success(c, nil)
@@ -103,6 +112,27 @@ func (ct *UserToken) BatchDelete(c *gin.Context) {
 	if len(ids) == 0 {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
 		return
+	}
+	// 补充操作日志详情：显示去重后的用户名列表
+	res := service.AllService.UserService.TokenList(1, uint(len(ids)), func(tx *gorm.DB) {
+		tx.Where("id in (?)", ids)
+	})
+	seen := map[uint]bool{}
+	var userIds []uint
+	for _, t := range res.UserTokens {
+		if t.UserId > 0 && !seen[t.UserId] {
+			seen[t.UserId] = true
+			userIds = append(userIds, t.UserId)
+		}
+	}
+	names := []string{}
+	if len(userIds) > 0 {
+		for _, u := range service.AllService.UserService.ListByIds(userIds) {
+			names = append(names, u.Username)
+		}
+	}
+	if len(names) > 0 {
+		c.Set("op_log_extra", gin.H{"ids": names})
 	}
 	err := service.AllService.UserService.BatchDeleteUserToken(ids)
 	if err == nil {

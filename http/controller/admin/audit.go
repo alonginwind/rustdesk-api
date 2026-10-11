@@ -70,6 +70,18 @@ func (a *Audit) ConnDelete(c *gin.Context) {
 	}
 	l := service.AllService.AuditService.ConnInfoById(f.Id)
 	if l.Id > 0 {
+		// 补充操作日志详情：显示目标设备、来源设备和来源设备名称
+		extra := gin.H{}
+		if l.PeerId != "" {
+			extra["id"] = l.PeerId
+		}
+		if l.FromPeer != "" {
+			extra["peer_id"] = l.FromPeer
+		}
+		if l.FromName != "" {
+			extra["name"] = l.FromName
+		}
+		c.Set("op_log_extra", extra)
 		err := service.AllService.AuditService.DeleteAuditConn(l)
 		if err == nil {
 			response.Success(c, nil)
@@ -101,6 +113,21 @@ func (a *Audit) BatchConnDelete(c *gin.Context) {
 	if len(f.Ids) == 0 {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
 		return
+	}
+	// 补充操作日志详情：显示去重后的来源设备名称列表
+	res := service.AllService.AuditService.AuditConnList(1, uint(len(f.Ids)), func(tx *gorm.DB) {
+		tx.Where("id in (?)", f.Ids)
+	})
+	seen := map[string]bool{}
+	var fromNames []string
+	for _, conn := range res.AuditConns {
+		if conn.FromName != "" && !seen[conn.FromName] {
+			seen[conn.FromName] = true
+			fromNames = append(fromNames, conn.FromName)
+		}
+	}
+	if len(fromNames) > 0 {
+		c.Set("op_log_extra", gin.H{"ids": fromNames})
 	}
 
 	err := service.AllService.AuditService.BatchDeleteAuditConn(f.Ids)
@@ -169,6 +196,18 @@ func (a *Audit) FileDelete(c *gin.Context) {
 	}
 	l := service.AllService.AuditService.FileInfoById(f.Id)
 	if l.Id > 0 {
+		// 补充操作日志详情：显示目标设备、来源设备和来源设备名称
+		extra := gin.H{}
+		if l.PeerId != "" {
+			extra["id"] = l.PeerId
+		}
+		if l.FromPeer != "" {
+			extra["peer_id"] = l.FromPeer
+		}
+		if l.FromName != "" {
+			extra["name"] = l.FromName
+		}
+		c.Set("op_log_extra", extra)
 		err := service.AllService.AuditService.DeleteAuditFile(l)
 		if err == nil {
 			response.Success(c, nil)
@@ -200,6 +239,21 @@ func (a *Audit) BatchFileDelete(c *gin.Context) {
 	if len(f.Ids) == 0 {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
 		return
+	}
+	// 补充操作日志详情：显示去重后的来源设备名称列表
+	res := service.AllService.AuditService.AuditFileList(1, uint(len(f.Ids)), func(tx *gorm.DB) {
+		tx.Where("id in (?)", f.Ids)
+	})
+	seen := map[string]bool{}
+	var fromNames []string
+	for _, file := range res.AuditFiles {
+		if file.FromName != "" && !seen[file.FromName] {
+			seen[file.FromName] = true
+			fromNames = append(fromNames, file.FromName)
+		}
+	}
+	if len(fromNames) > 0 {
+		c.Set("op_log_extra", gin.H{"ids": fromNames})
 	}
 
 	err := service.AllService.AuditService.BatchDeleteAuditFile(f.Ids)
