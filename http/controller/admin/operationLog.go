@@ -22,6 +22,7 @@ type OperationLog struct {
 // @Param username query string false "操作人"
 // @Param resource query string false "资源类型"
 // @Param op query string false "操作类型"
+// @Param detail query string false "详细信息（模糊匹配 detail 原文）"
 // @Success 200 {object} response.Response{data=model.OperationLogList}
 // @Failure 500 {object} response.Response
 // @Router /admin/operation_log/list [get]
@@ -41,6 +42,9 @@ func (ct *OperationLog) List(c *gin.Context) {
 		}
 		if query.Op != "" {
 			tx.Where("op = ?", query.Op)
+		}
+		if query.Detail != "" {
+			tx.Where("detail like ?", "%"+query.Detail+"%")
 		}
 	})
 	response.Success(c, res)

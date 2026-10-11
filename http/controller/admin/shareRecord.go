@@ -96,6 +96,21 @@ func (sr *ShareRecord) BatchDelete(c *gin.Context) {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
 		return
 	}
+	// 批量删除：把被删分享对应的设备ID列表（去重）覆盖进 ids 键
+	res := service.AllService.ShareRecordService.List(1, uint(len(f.Ids)), func(tx *gorm.DB) {
+		tx.Where("id in (?)", f.Ids)
+	})
+	seen := map[string]bool{}
+	peerIds := []string{}
+	for _, i := range res.ShareRecords {
+		if i.PeerId != "" && !seen[i.PeerId] {
+			seen[i.PeerId] = true
+			peerIds = append(peerIds, i.PeerId)
+		}
+	}
+	if len(peerIds) > 0 {
+		c.Set("op_log_extra", gin.H{"ids": peerIds})
+	}
 	err := service.AllService.ShareRecordService.BatchDelete(f.Ids)
 	if err != nil {
 		response.Fail(c, 101, response.TranslateMsg(c, "OperationFailed")+err.Error())

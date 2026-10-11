@@ -97,6 +97,17 @@ func (ct *LoginLog) Delete(c *gin.Context) {
 		response.Fail(c, 101, response.TranslateMsg(c, "ItemNotFound"))
 		return
 	}
+	// 删除请求体只有 id（日志行ID）：设备端登录时 id 覆盖为设备ID；webadmin 登录无设备则显示 "webadmin" 字样
+	extra := gin.H{}
+	if l.DeviceId != "" {
+		extra["id"] = l.DeviceId
+	} else {
+		extra["id"] = "webadmin"
+	}
+	if u := service.AllService.UserService.InfoById(l.UserId); u.Id > 0 {
+		extra["username"] = u.Username
+	}
+	c.Set("op_log_extra", extra)
 	err := service.AllService.LoginLogService.Delete(l)
 	if err == nil {
 		response.Success(c, nil)
@@ -126,7 +137,27 @@ func (ct *LoginLog) BatchDelete(c *gin.Context) {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
 		return
 	}
-
+	// 批量删除：把去重后的用户名覆盖进 ids 键，描述只显示用户名、不显示行ID列表
+	res := service.AllService.LoginLogService.List(1, uint(len(f.Ids)), func(tx *gorm.DB) {
+		tx.Where("id in (?)", f.Ids)
+	})
+	seen := map[uint]bool{}
+	var userIds []uint
+	for _, l := range res.LoginLogs {
+		if l.UserId > 0 && !seen[l.UserId] {
+			seen[l.UserId] = true
+			userIds = append(userIds, l.UserId)
+		}
+	}
+	names := []string{}
+	if len(userIds) > 0 {
+		for _, u := range service.AllService.UserService.ListByIds(userIds) {
+			names = append(names, u.Username)
+		}
+	}
+	if len(names) > 0 {
+		c.Set("op_log_extra", gin.H{"ids": names})
+	}
 	err := service.AllService.LoginLogService.BatchDelete(f.Ids)
 	if err == nil {
 		response.Success(c, nil)

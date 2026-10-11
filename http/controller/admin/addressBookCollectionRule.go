@@ -101,6 +101,21 @@ func (abcr *AddressBookCollectionRule) Create(c *gin.Context) {
 		response.Fail(c, 101, response.TranslateMsg(c, msg))
 		return
 	}
+	// 补充操作日志描述信息（所属集合名与共享目标，群组名复用 username 键展示）
+	extra := gin.H{}
+	if col := service.AllService.AddressBookService.CollectionInfoById(t.CollectionId); col.Id > 0 {
+		extra["name"] = col.Name
+	}
+	if t.Type == model.ShareAddressBookRuleTypePersonal {
+		if u := service.AllService.UserService.InfoById(t.ToId); u.Id > 0 {
+			extra["username"] = u.Username
+		}
+	} else if g := service.AllService.GroupService.InfoById(t.ToId); g.Id > 0 {
+		extra["username"] = g.Name
+	}
+	if len(extra) > 0 {
+		c.Set("op_log_extra", extra)
+	}
 	err := service.AllService.AddressBookService.CreateRule(t)
 	if err != nil {
 		response.Fail(c, 101, response.TranslateMsg(c, "OperationFailed")+err.Error())

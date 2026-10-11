@@ -91,6 +91,10 @@ func (ct *PeerStrategy) Create(c *gin.Context) {
 		response.Fail(c, 101, response.TranslateMsg(c, "ItemExists"))
 		return
 	}
+	// 设备ID与别名补充进 detail（覆盖 body 的策略行ID）
+	if peer := service.AllService.PeerService.FindById(f.PeerId); peer.RowId > 0 {
+		c.Set("op_log_extra", gin.H{"id": peer.Id, "alias": peer.Alias})
+	}
 	ps := f.ToPeerStrategy()
 	if err := service.AllService.PeerStrategyService.Create(ps); err != nil {
 		response.Fail(c, 101, response.TranslateMsg(c, "OperationFailed")+err.Error())
@@ -132,6 +136,10 @@ func (ct *PeerStrategy) Update(c *gin.Context) {
 	}
 	ps.PeerId = f.PeerId
 	ps.ConfigOptions = f.ToPeerStrategy().ConfigOptions
+	// 设备ID与别名补充进 detail（覆盖 body 的策略行ID）
+	if peer := service.AllService.PeerService.FindById(ps.PeerId); peer.RowId > 0 {
+		c.Set("op_log_extra", gin.H{"id": peer.Id, "alias": peer.Alias})
+	}
 	if err := service.AllService.PeerStrategyService.Update(ps); err != nil {
 		response.Fail(c, 101, response.TranslateMsg(c, "OperationFailed")+err.Error())
 		return
@@ -163,6 +171,10 @@ func (ct *PeerStrategy) Delete(c *gin.Context) {
 	}
 	ps := service.AllService.PeerStrategyService.Info(f.Id)
 	if ps.Id > 0 {
+		// 补充操作日志描述信息（设备ID与别名，覆盖请求体中的策略行ID）
+		if peer := service.AllService.PeerService.FindById(ps.PeerId); peer.RowId > 0 {
+			c.Set("op_log_extra", gin.H{"id": peer.Id, "alias": peer.Alias})
+		}
 		if err := service.AllService.PeerStrategyService.Delete(ps); err != nil {
 			response.Fail(c, 101, response.TranslateMsg(c, "OperationFailed")+err.Error())
 			return

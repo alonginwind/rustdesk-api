@@ -2,7 +2,6 @@ package admin
 
 import (
 	"encoding/json"
-	_ "encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/lejianwen/rustdesk-api/v2/global"
 	"github.com/lejianwen/rustdesk-api/v2/http/request/admin"
@@ -301,6 +300,13 @@ func (ct *AddressBook) Delete(c *gin.Context) {
 		response.Fail(c, 101, response.TranslateMsg(c, "ItemNotFound"))
 		return
 	}
+	// 删除请求体只有 row_id，把设备ID与设备信息并入操作日志详情
+	c.Set("op_log_extra", gin.H{
+		"id":       t.Id,
+		"alias":    t.Alias,
+		"username": t.Username,
+		"hostname": t.Hostname,
+	})
 	err := service.AllService.AddressBookService.Delete(t)
 	if err == nil {
 		// 置空 peers 表中的别名

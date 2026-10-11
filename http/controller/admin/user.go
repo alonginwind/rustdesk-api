@@ -157,6 +157,8 @@ func (ct *User) Delete(c *gin.Context) {
 	}
 	u := service.AllService.UserService.InfoById(f.Id)
 	if u.Id > 0 {
+		// 删除请求体只有 id，把被删用户名并入操作日志详情
+		c.Set("op_log_extra", gin.H{"username": u.Username})
 		err := service.AllService.UserService.Delete(u)
 		if err == nil {
 			response.Success(c, nil)
@@ -195,6 +197,8 @@ func (ct *User) UpdatePassword(c *gin.Context) {
 		response.Fail(c, 101, response.TranslateMsg(c, "ItemNotFound"))
 		return
 	}
+	// 补充操作日志描述信息（被改密码的用户名）
+	c.Set("op_log_extra", gin.H{"username": u.Username})
 	err := service.AllService.UserService.UpdatePassword(u, f.Password)
 	if err != nil {
 		response.Fail(c, 101, response.TranslateMsg(c, "OperationFailed")+err.Error())
