@@ -66,7 +66,7 @@ func (p *Peer) SysInfo(c *gin.Context) {
 	}
 	// 根据客户端上报的预设值自动将设备添加到地址簿
 	service.AllService.AddressBookService.ApplyPresetToAddressBook(
-		f.Id, f.Os, f.PresetAddressBookName, f.PresetAddressBookAlias, f.Hostname, f.Username,
+		pe.RowId, f.Id, f.Os, f.PresetAddressBookName, f.PresetAddressBookAlias, f.Hostname, f.Username,
 	)
 
 	//SYSINFO_UPDATED 上传成功

@@ -68,11 +68,9 @@ func (i *Index) Heartbeat(c *gin.Context) {
 	// 对应 RustDesk 客户端 sync.rs 中心跳响应的 strategy 字段
 	resp := gin.H{}
 	deviceStrategy := service.AllService.PeerStrategyService.FindByPeerId(info.Id)
-	defaultStrategy := service.AllService.PeerStrategyService.FindDefault()
-	// 预设值提前获取：默认策略只对已注册（地址簿别名非空）的设备下发
-	abName, abAlias, abUsrname, abHostname := service.AllService.AddressBookService.GetPresetValuesForPeer(info.Id)
-	if abAlias == "" { // 未注册设备视为无默认策略，仅设备策略可下发
-		defaultStrategy = &model.PeerStrategy{}
+	defaultStrategy := &model.PeerStrategy{}
+	if peer.Alias != "" { // 未注册设备视为无默认策略，仅设备策略可下发
+		defaultStrategy = service.AllService.PeerStrategyService.FindDefault()
 	}
 	// 合并策略：设备策略 > 默认策略
 	effectiveModifiedAt := service.AllService.PeerStrategyService.GetEffectiveModifiedAt(deviceStrategy, defaultStrategy)
@@ -86,7 +84,7 @@ func (i *Index) Heartbeat(c *gin.Context) {
 	}
 
 	// 检查地址簿预设信息是否有变化（集合名称、别名、主机名）
-	presetChanged := abName != peer.PresetAbName || abAlias != peer.PresetAbAlias || abUsrname != peer.PresetDevUsrName || abHostname != peer.PresetDevName
+	presetChanged := peer.AbId != peer.PresetAbId || peer.Alias != peer.PresetAbAlias || peer.Username != peer.PresetDevUsrName || peer.Hostname != peer.PresetDevName
 	if presetChanged {
 		if !strategyChanged {
 			if hasStrategy {
@@ -96,12 +94,18 @@ func (i *Index) Heartbeat(c *gin.Context) {
 			}
 		}
 		// 始终写入（包括空值），确保客户端能清除旧预设
-		mergedConfig["preset-address-book-name"] = abName
-		mergedConfig["preset-address-book-alias"] = abAlias
-		mergedConfig["preset-device-username"] = abUsrname
-		mergedConfig["preset-device-name"] = abHostname
+		mergedConfig["preset-address-book-alias"] = peer.Alias
+		if peer.AbId != 0 {
+			mergedConfig["preset-address-book-name"] = service.AllService.AddressBookService.CollectionInfoById(peer.AbId).Name
+			mergedConfig["preset-device-username"] = peer.Username
+			mergedConfig["preset-device-name"] = peer.Hostname
+		} else {
+			mergedConfig["preset-address-book-name"] = ""
+			mergedConfig["preset-device-username"] = ""
+			mergedConfig["preset-device-name"] = ""
+		}
 		// 更新 peer 表中的预设值，用于下次对比
-		service.AllService.PeerService.UpdatePresets(peer.RowId, abName, abAlias, abUsrname, abHostname)
+		service.AllService.PeerService.UpdatePresets(peer.RowId, peer.AbId, peer.Alias, mergedConfig["preset-device-username"], mergedConfig["preset-device-name"])
 	}
 
 	if strategyChanged || presetChanged {

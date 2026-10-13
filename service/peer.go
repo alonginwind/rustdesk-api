@@ -162,12 +162,16 @@ func (ps *PeerService) Update(u *model.Peer) error {
 
 // ClearAlias 置空设备别名（支持空值写入，struct Updates 无法做到）
 func (ps *PeerService) ClearAlias(rowId uint) error {
-	return DB.Model(&model.Peer{}).Where("row_id = ?", rowId).Update("alias", "").Error
+	return DB.Model(&model.Peer{}).Where("row_id = ?", rowId).Updates(map[string]interface{}{
+		"ab_id": 0,
+		"alias": "",
+	}).Error
 }
 
 // UpdateAlias 更新设备别名（支持空值写入）
-func (ps *PeerService) UpdateAlias(rowId uint, alias, username, hostname string) error {
+func (ps *PeerService) UpdateAlias(rowId, abId uint, alias, username, hostname string) error {
 	return DB.Model(&model.Peer{}).Where("row_id = ?", rowId).Updates(map[string]interface{}{
+		"ab_id": abId,
 		"alias": alias,
 		"username": username,
 		"hostname": hostname,
@@ -175,9 +179,9 @@ func (ps *PeerService) UpdateAlias(rowId uint, alias, username, hostname string)
 }
 
 // UpdatePresets 仅更新预设地址簿字段（支持空值写入）
-func (ps *PeerService) UpdatePresets(rowId uint, presetAbName, presetAbAlias, presetDevUsrName, presetDevName string) error {
+func (ps *PeerService) UpdatePresets(rowId, abId uint, presetAbAlias, presetDevUsrName, presetDevName string) error {
 	return DB.Model(&model.Peer{}).Where("row_id = ?", rowId).Updates(map[string]interface{}{
-		"preset_ab_name":  presetAbName,
+		"preset_ab_id":  abId,
 		"preset_ab_alias": presetAbAlias,
 		"preset_dev_usr_name": presetDevUsrName,
 		"preset_dev_name": presetDevName,

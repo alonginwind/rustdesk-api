@@ -396,7 +396,7 @@ func (s *AddressBookService) CheckCollectionOwner(uid uint, cid uint) bool {
 //   abAlias  - preset-address-book-alias，地址簿中的别名
 //   hostname - 主机名（客户端已将 preset-device-name 写入 hostname 字段）
 //   username - 用户名（客户端已将 preset-device-username 写入 username 字段）
-func (s *AddressBookService) ApplyPresetToAddressBook(peerId, os, abName, abAlias, hostname, username string) {
+func (s *AddressBookService) ApplyPresetToAddressBook(peerRowId uint, peerId, os, abName, abAlias, hostname, username string) {
 	if abName == "" {
 		return
 	}
@@ -424,6 +424,9 @@ func (s *AddressBookService) ApplyPresetToAddressBook(peerId, os, abName, abAlia
 		if len(updates) > 0 {
 			DB.Model(existing).Updates(updates)
 		}
+		if peerRowId > 0 {
+			AllService.PeerService.UpdateAlias(peerRowId, collection.Id, abAlias, username, hostname)
+		}
 		return
 	}
 
@@ -445,6 +448,9 @@ func (s *AddressBookService) ApplyPresetToAddressBook(peerId, os, abName, abAlia
 	} else {
 		// 删除该设备在其他全员集合中的旧条目
 		s.CleanUp(peerId, collection.Id)
+		if peerRowId > 0 {
+			AllService.PeerService.UpdateAlias(peerRowId, collection.Id, abAlias, username, hostname)
+		}
 	}
 }
 
