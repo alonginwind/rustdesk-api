@@ -7,6 +7,7 @@ import (
 	"github.com/lejianwen/rustdesk-api/v2/global"
 	"github.com/lejianwen/rustdesk-api/v2/http/request/admin"
 	"github.com/lejianwen/rustdesk-api/v2/http/response"
+	"github.com/lejianwen/rustdesk-api/v2/model"
 	"github.com/lejianwen/rustdesk-api/v2/service"
 	"gorm.io/gorm"
 )
@@ -33,7 +34,7 @@ func (ct *PeerStrategy) List(c *gin.Context) {
 		return
 	}
 	res := service.AllService.PeerStrategyService.List(query.Page, query.PageSize, func(tx *gorm.DB) {
-		tx.Where("peer_id != ''") // 排除默认策略
+		tx.Where("peer_id != '' AND peer_id != ?", model.UnboundDefaultPeerId) // 排除默认策略
 		if query.PeerId != "" {
 			tx.Where("peer_id like ?", "%"+query.PeerId+"%")
 		}
@@ -200,6 +201,25 @@ func (ct *PeerStrategy) Default(c *gin.Context) {
 	response.Success(c, ps)
 }
 
+// DefaultUnbound 获取未绑定设备默认策略
+// @Tags 被控端策略
+// @Summary 获取未绑定设备默认策略
+// @Description 获取未绑定（未注册）设备专用默认策略，未绑定设备的被控端会在心跳时收到此配置
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} response.Response{data=model.PeerStrategy}
+// @Failure 500 {object} response.Response
+// @Router /admin/peer_strategy/default_unbound [get]
+// @Security token
+func (ct *PeerStrategy) DefaultUnbound(c *gin.Context) {
+	ps := service.AllService.PeerStrategyService.FindDefault2()
+	if ps.Id == 0 {
+		// 无记录时填充保留 peer_id，供前端识别该行并路由到未绑定默认策略接口
+		ps.PeerId = model.UnboundDefaultPeerId
+	}
+	response.Success(c, ps)
+}
+
 // UpdateDefault 设置/更新默认策略
 // @Tags 被控端策略
 // @Summary 设置默认策略
@@ -224,5 +244,32 @@ func (ct *PeerStrategy) UpdateDefault(c *gin.Context) {
 	}
 	// 重新查询，确保返回完整记录（含 Id）
 	ps = service.AllService.PeerStrategyService.FindDefault()
+	response.Success(c, ps)
+}
+
+// UpdateDefaultUnbound 设置/更新未绑定设备默认策略
+// @Tags 被控端策略
+// @Summary 设置未绑定设备默认策略
+// @Description 设置未绑定（未注册）设备专用默认策略，未绑定设备的被控端会在心跳时收到此配置
+// @Accept  json
+// @Produce  json
+// @Param body body admin.DefaultStrategyForm true "策略信息"
+// @Success 200 {object} response.Response{data=model.PeerStrategy}
+// @Failure 500 {object} response.Response
+// @Router /admin/peer_strategy/default_unbound/update [post]
+// @Security token
+func (ct *PeerStrategy) UpdateDefaultUnbound(c *gin.Context) {
+	f := &admin.DefaultStrategyForm{}
+	if err := c.ShouldBindJSON(f); err != nil {
+		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError")+err.Error())
+		return
+	}
+	ps := f.ToPeerStrategy()
+	if err := service.AllService.PeerStrategyService.CreateOrUpdateDefault2(ps); err != nil {
+		response.Fail(c, 101, response.TranslateMsg(c, "OperationFailed")+err.Error())
+		return
+	}
+	// 重新查询，确保返回完整记录（含 Id）
+	ps = service.AllService.PeerStrategyService.FindDefault2()
 	response.Success(c, ps)
 }

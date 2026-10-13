@@ -25,10 +25,16 @@ func (pss *PeerStrategyService) FindDefault() *model.PeerStrategy {
 	return ps
 }
 
-// CreateOrUpdateDefault 创建或更新默认策略
-// 使用 OnConflict 实现幂等 upsert，避免并发竞态
-func (pss *PeerStrategyService) CreateOrUpdateDefault(ps *model.PeerStrategy) error {
-	ps.PeerId = "" // 强制保证默认策略的 peer_id 为空
+// FindDefault2 查找未绑定设备专用默认策略（保留 peer_id 的记录）
+func (pss *PeerStrategyService) FindDefault2() *model.PeerStrategy {
+	ps := &model.PeerStrategy{}
+	DB.Where("peer_id = ?", model.UnboundDefaultPeerId).First(ps)
+	return ps
+}
+
+// upsertDefault 按 peer_id 幂等 upsert 默认策略，使用 OnConflict 避免并发竞态
+func (pss *PeerStrategyService) upsertDefault(ps *model.PeerStrategy, peerId string) error {
+	ps.PeerId = peerId
 	ps.ModifiedAt = time.Now().UnixMilli()
 	return DB.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "peer_id"}},
@@ -38,6 +44,16 @@ func (pss *PeerStrategyService) CreateOrUpdateDefault(ps *model.PeerStrategy) er
 			"updated_at",
 		}),
 	}).Create(ps).Error
+}
+
+// CreateOrUpdateDefault 创建或更新默认策略
+func (pss *PeerStrategyService) CreateOrUpdateDefault(ps *model.PeerStrategy) error {
+	return pss.upsertDefault(ps, "") // 强制保证默认策略的 peer_id 为空
+}
+
+// CreateOrUpdateDefault2 创建或更新未绑定设备专用默认策略
+func (pss *PeerStrategyService) CreateOrUpdateDefault2(ps *model.PeerStrategy) error {
+	return pss.upsertDefault(ps, model.UnboundDefaultPeerId) // 强制保证使用保留的 peer_id
 }
 
 // Info 根据主键查找

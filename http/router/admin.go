@@ -329,6 +329,8 @@ func PeerStrategyBind(rg *gin.RouterGroup) {
 		aR.POST("/delete", cont.Delete)
 		aR.GET("/default", cont.Default)
 		aR.POST("/default/update", cont.UpdateDefault)
+		aR.GET("/default_unbound", cont.DefaultUnbound)
+		aR.POST("/default_unbound/update", cont.UpdateDefaultUnbound)
 	}
 }
 

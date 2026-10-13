@@ -2,6 +2,10 @@ package model
 
 import "github.com/lejianwen/rustdesk-api/v2/model/custom_types"
 
+// UnboundDefaultPeerId 未绑定设备专用默认策略的保留 peer_id
+// RustDesk 设备 ID 只含数字与字母，不会与真实设备冲突
+const UnboundDefaultPeerId = "__unbound_default__"
+
 // PeerStrategy 被控端策略配置
 // 对应 RustDesk 客户端 sync.rs 中心跳响应的 strategy 字段
 // 通过心跳接口下发给被控端，被控端收到后会应用 config_options 到本地配置

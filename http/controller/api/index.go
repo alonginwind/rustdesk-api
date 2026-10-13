@@ -68,9 +68,12 @@ func (i *Index) Heartbeat(c *gin.Context) {
 	// 对应 RustDesk 客户端 sync.rs 中心跳响应的 strategy 字段
 	resp := gin.H{}
 	deviceStrategy := service.AllService.PeerStrategyService.FindByPeerId(info.Id)
-	defaultStrategy := &model.PeerStrategy{}
-	if peer.Alias != "" { // 未注册设备视为无默认策略，仅设备策略可下发
+	// 默认策略按绑定状态分流：已绑定设备用全局默认策略，未绑定设备用未绑定专用默认策略
+	var defaultStrategy *model.PeerStrategy
+	if peer.Alias != "" {
 		defaultStrategy = service.AllService.PeerStrategyService.FindDefault()
+	} else {
+		defaultStrategy = service.AllService.PeerStrategyService.FindDefault2()
 	}
 	// 合并策略：设备策略 > 默认策略
 	effectiveModifiedAt := service.AllService.PeerStrategyService.GetEffectiveModifiedAt(deviceStrategy, defaultStrategy)
