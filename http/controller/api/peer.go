@@ -34,33 +34,20 @@ func (p *Peer) SysInfo(c *gin.Context) {
 	if pe.RowId == 0 {
 		pe = f.ToPeer()
 		pe.UserId = service.AllService.UserService.FindLatestUserIdFromLoginLogByUuid(pe.Uuid, pe.Id)
-		if pe.UserId == 0 || f.PresetAddressBookAlias != "" { //只同步未登录或者虽登录但手动注册的被控端
-			pe.Alias = f.PresetAddressBookAlias
-			err = service.AllService.PeerService.Create(pe)
-			if err != nil {
-				response.Error(c, response.TranslateMsg(c, "OperationFailed")+err.Error())
-				return
-			}
-		} else {
-			//已登录并且未手动注册的设备不入库，返回SYSINFO_UPDATED避免客户端每120秒重试
-			c.String(http.StatusOK, "SYSINFO_UPDATED")
+		pe.Alias = f.PresetAddressBookAlias
+		err = service.AllService.PeerService.Create(pe)
+		if err != nil {
+			response.Error(c, response.TranslateMsg(c, "OperationFailed")+err.Error())
 			return
 		}
 	} else {
-		pe.UserId = service.AllService.UserService.FindLatestUserIdFromLoginLogByUuid(pe.Uuid, pe.Id)
-		if pe.UserId == 0 || f.PresetAddressBookAlias != "" { //只同步未登录或者虽登录但已绑定的被控端
-			fpe := f.ToPeer()
-			fpe.RowId = pe.RowId
-			fpe.UserId = pe.UserId
-			fpe.Alias = f.PresetAddressBookAlias
-			err = service.AllService.PeerService.Update(fpe)
-			if err != nil {
-				response.Error(c, response.TranslateMsg(c, "OperationFailed")+err.Error())
-				return
-			}
-		} else {
-			//已登录并且未绑定的设备不入库，返回SYSINFO_UPDATED避免客户端每120秒重试
-			c.String(http.StatusOK, "SYSINFO_UPDATED")
+		fpe := f.ToPeer()
+		fpe.RowId = pe.RowId
+		fpe.UserId = pe.UserId
+		fpe.Alias = f.PresetAddressBookAlias
+		err = service.AllService.PeerService.Update(fpe)
+		if err != nil {
+			response.Error(c, response.TranslateMsg(c, "OperationFailed")+err.Error())
 			return
 		}
 	}

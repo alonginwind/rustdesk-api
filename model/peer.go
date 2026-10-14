@@ -2,7 +2,7 @@ package model
 
 type Peer struct {
 	RowId          		uint   `json:"row_id" gorm:"primaryKey;"`
-	Id             		string `json:"id"  gorm:"default:'';not null;index"`
+	Id             		string `json:"id"  gorm:"default:'';not null;uniqueIndex"`
 	Cpu            		string `json:"cpu"  gorm:"default:'';not null;"`
 	Hostname       		string `json:"hostname"  gorm:"default:'';not null;"`
 	Memory         		string `json:"memory"  gorm:"default:'';not null;"`

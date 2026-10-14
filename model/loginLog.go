@@ -4,8 +4,8 @@ type LoginLog struct {
 	IdModel
 	UserId      uint   `json:"user_id" gorm:"default:0;not null;"`
 	Client      string `json:"client"` //webadmin,webclient,app,
-	DeviceId    string `json:"device_id"`
-	Uuid        string `json:"uuid"`
+	DeviceId    string `json:"device_id" gorm:"index:idx_uuid_device_id,priority:2"`
+	Uuid        string `json:"uuid" gorm:"index:idx_uuid_device_id,priority:1"`
 	Ip          string `json:"ip"`
 	Type        string `json:"type"`     //account,oauth
 	Platform    string `json:"platform"` //windows,linux,mac,android,ios
