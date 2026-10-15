@@ -105,7 +105,7 @@ func (i *Index) Heartbeat(c *gin.Context) {
 			mergedConfig["preset-device-name"] = ""
 		}
 		// 更新 peer 表中的预设值，用于下次对比
-		service.AllService.PeerService.UpdatePresets(peer.RowId, peer.AbId, peer.Alias, mergedConfig["preset-device-username"], mergedConfig["preset-device-name"])
+		service.AllService.PeerService.UpdatePresets(peer.RowId, peer.AbId, peer.Alias, peer.Username, peer.Hostname)
 	}
 
 	if strategyChanged || presetChanged {
