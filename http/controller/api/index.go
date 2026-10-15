@@ -72,24 +72,24 @@ func (i *Index) Heartbeat(c *gin.Context) {
 	}
 	// 合并策略：设备策略 > 默认策略
 	effectiveModifiedAt := service.AllService.PeerStrategyService.GetEffectiveModifiedAt(deviceStrategy, defaultStrategy)
-	// 如果任一策略存在，且 modified_at 有变化，则下发合并后的配置
-	hasStrategy := (deviceStrategy.Id > 0) || (defaultStrategy.Id > 0)
-	strategyChanged := false
-	var mergedConfig map[string]string
-	if hasStrategy && info.ModifiedAt != effectiveModifiedAt {
-		mergedConfig = service.AllService.PeerStrategyService.GetMergedConfigOptions(deviceStrategy, defaultStrategy)
-		strategyChanged = true
-	}
-
 	// 检查地址簿预设信息是否有变化（集合名称、别名、主机名）
 	presetChanged := peer.AbId != peer.PresetAbId || peer.Alias != peer.PresetAbAlias || peer.Username != peer.PresetDevUsrName || peer.Hostname != peer.PresetDevName
 	if presetChanged {
-		if !strategyChanged {
-			if hasStrategy {
-				mergedConfig = service.AllService.PeerStrategyService.GetMergedConfigOptions(deviceStrategy, defaultStrategy)
-			} else {
-				mergedConfig = map[string]string{}
-			}
+		effectiveModifiedAt = time.Now().UnixMilli()
+		// 更新 peer 表中的预设值，用于下次对比
+		service.AllService.PeerService.UpdatePresets(peer.RowId, peer.AbId, peer.Alias, peer.Username, peer.Hostname, effectiveModifiedAt)
+	} else {
+		effectiveModifiedAt = max(effectiveModifiedAt, peer.PresetModifiedAt)
+	}
+
+	// 如果任一策略存在，且 modified_at 有变化，则下发合并后的配置
+	var mergedConfig map[string]string
+	if info.ModifiedAt != effectiveModifiedAt {
+		hasStrategy := (deviceStrategy.Id > 0) || (defaultStrategy.Id > 0)
+		if hasStrategy {
+			mergedConfig = service.AllService.PeerStrategyService.GetMergedConfigOptions(deviceStrategy, defaultStrategy)
+		} else {
+			mergedConfig = map[string]string{}
 		}
 		// 始终写入（包括空值），确保客户端能清除旧预设
 		mergedConfig["preset-address-book-alias"] = peer.Alias
@@ -102,11 +102,7 @@ func (i *Index) Heartbeat(c *gin.Context) {
 			mergedConfig["preset-device-username"] = ""
 			mergedConfig["preset-device-name"] = ""
 		}
-		// 更新 peer 表中的预设值，用于下次对比
-		service.AllService.PeerService.UpdatePresets(peer.RowId, peer.AbId, peer.Alias, peer.Username, peer.Hostname)
-	}
 
-	if strategyChanged || presetChanged {
 		resp["strategy"] = gin.H{
 			"config_options": mergedConfig,
 		}

@@ -179,11 +179,12 @@ func (ps *PeerService) UpdateAlias(rowId, abId uint, alias, username, hostname s
 }
 
 // UpdatePresets 仅更新预设地址簿字段（支持空值写入）
-func (ps *PeerService) UpdatePresets(rowId, abId uint, presetAbAlias, presetDevUsrName, presetDevName string) error {
+func (ps *PeerService) UpdatePresets(rowId, abId uint, presetAbAlias, presetDevUsrName, presetDevName string, presetModifiedAt int64) error {
 	return DB.Model(&model.Peer{}).Where("row_id = ?", rowId).Updates(map[string]interface{}{
 		"preset_ab_id":  abId,
 		"preset_ab_alias": presetAbAlias,
 		"preset_dev_usr_name": presetDevUsrName,
 		"preset_dev_name": presetDevName,
+		"preset_modified_at": presetModifiedAt,
 	}).Error
 }

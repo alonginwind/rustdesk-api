@@ -22,6 +22,7 @@ type Peer struct {
 	PresetAbAlias  		string `json:"preset_ab_alias" gorm:"default:'';not null;"`
 	PresetDevUsrName	string `json:"preset_dev_usr_name" gorm:"default:'';not null;"`
 	PresetDevName		string `json:"preset_dev_name" gorm:"default:'';not null;"`
+	PresetModifiedAt   	int64  `json:"preset_modified_at" gorm:"default:0;not null;"`
 	TimeModel
 }
 
