@@ -454,27 +454,6 @@ func (s *AddressBookService) ApplyPresetToAddressBook(peerRowId uint, peerId, os
 	}
 }
 
-// GetPresetValuesForPeer 从地址簿中查询设备的预设信息
-// 返回: (collectionName, alias, username, hostname)
-func (s *AddressBookService) GetPresetValuesForPeer(peerId string) (string, string, string, string) {
-	if peerId == "" {
-		return "", "", "", ""
-	}
-	// 查找地址簿条目（按设备ID查找全员地址簿）
-	ab := &model.AddressBook{}
-	if DB.Where("id = ? AND user_id = 1", peerId).First(ab).Error != nil {
-		return "", "", "", ""
-	}
-	collectionName := ""
-	if ab.CollectionId > 0 {
-		collection := s.CollectionInfoById(ab.CollectionId)
-		if collection.Id > 0 {
-			collectionName = collection.Name
-		}
-	}
-	return collectionName, ab.Alias, ab.Username, ab.Hostname
-}
-
 func (s *AddressBookService) BatchUpdateTags(abs []*model.AddressBook, tags []string) error {
 	ids := make([]uint, 0)
 	for _, ab := range abs {
