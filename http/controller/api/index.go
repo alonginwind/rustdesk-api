@@ -60,8 +60,6 @@ func (i *Index) Heartbeat(c *gin.Context) {
 			upp := &model.Peer{RowId: peer.RowId, LastOnlineTime: time.Now().Unix(), LastOnlineIp: c.ClientIP()}
 			service.AllService.PeerService.Update(upp)
 		}
-	} else {//删除已登录的未绑定被控端
-		service.AllService.PeerService.Delete(peer);
 	}
 	// 构建心跳响应，检查是否有策略配置需要下发给被控端
 	// 对应 RustDesk 客户端 sync.rs 中心跳响应的 strategy 字段
