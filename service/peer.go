@@ -1,9 +1,66 @@
 package service
 
 import (
+	"sync"
+	"time"
+
 	"github.com/lejianwen/rustdesk-api/v2/model"
 	"gorm.io/gorm"
 )
+
+type heartbeatEntry struct {
+	Time int64
+	Ip   string
+}
+
+var (
+	heartbeatMu     sync.Mutex
+	heartbeatBuffer = make(map[uint]*heartbeatEntry)
+)
+
+// StartHeartbeatFlusher 启动后台协程，定时将心跳缓冲批量刷入数据库
+func (ps *PeerService) StartHeartbeatFlusher() {
+	go func() {
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			ps.flushHeartbeatBuffer()
+		}
+	}()
+}
+
+// BufferHeartbeat 心跳在线信息先写内存，后台每10s批量刷入数据库
+func (ps *PeerService) BufferHeartbeat(rowId uint, t int64, ip string) {
+	heartbeatMu.Lock()
+	defer heartbeatMu.Unlock()
+	heartbeatBuffer[rowId] = &heartbeatEntry{Time: t, Ip: ip}
+}
+
+func (ps *PeerService) flushHeartbeatBuffer() {
+	heartbeatMu.Lock()
+	if len(heartbeatBuffer) == 0 {
+		heartbeatMu.Unlock()
+		return
+	}
+	buf := heartbeatBuffer
+	heartbeatBuffer = make(map[uint]*heartbeatEntry)
+	heartbeatMu.Unlock()
+
+	tx := DB.Begin()
+	for rowId, e := range buf {
+		if err := tx.Model(&model.Peer{}).Where("row_id = ?", rowId).Updates(map[string]interface{}{
+			"last_online_time": e.Time,
+			"last_online_ip":   e.Ip,
+		}).Error; err != nil {
+			tx.Rollback()
+			Logger.Warnf("flush heartbeat buffer failed at peer %d: %v", rowId, err)
+			return
+		}
+	}
+	if err := tx.Commit().Error; err != nil {
+		Logger.Warnf("flush heartbeat buffer commit failed: %v", err)
+	}
+}
 
 type PeerService struct {
 }

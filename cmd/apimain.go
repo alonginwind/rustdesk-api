@@ -203,6 +203,9 @@ func InitGlobal() {
 	//service
 	service.New(&global.Config, global.DB, global.Logger, global.Jwt, global.Lock)
 
+	// 启动心跳缓冲后台刷写协程
+	service.AllService.PeerService.StartHeartbeatFlusher()
+
 	global.LoginLimiter = utils.NewLoginLimiter(utils.SecurityPolicy{
 		CaptchaThreshold: global.Config.App.CaptchaThreshold,
 		BanThreshold:     global.Config.App.BanThreshold,

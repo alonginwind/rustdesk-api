@@ -54,10 +54,9 @@ func (i *Index) Heartbeat(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{})
 		return
 	}
-	//如果在30s以内则不更新
-	if time.Now().Unix()-peer.LastOnlineTime >= 30 {
-		upp := &model.Peer{RowId: peer.RowId, LastOnlineTime: time.Now().Unix(), LastOnlineIp: c.ClientIP()}
-		service.AllService.PeerService.Update(upp)
+	//如果在20s以内则不更新
+	if time.Now().Unix()-peer.LastOnlineTime >= 20 {
+		service.AllService.PeerService.BufferHeartbeat(peer.RowId, time.Now().Unix(), c.ClientIP())
 	}
 	// 构建心跳响应，检查是否有策略配置需要下发给被控端
 	// 对应 RustDesk 客户端 sync.rs 中心跳响应的 strategy 字段
