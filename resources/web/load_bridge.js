@@ -102,16 +102,97 @@ function decryptFrame(cipher){if(cipher.length<=1){return cipher;}
 const seq=sessionState.encSeqRecv+1n;let plain;if(RD){plain=RD.secretboxOpenSeq(cipher,Number(seq),sessionState.sessionKey);}else{plain=nacl.secretbox.open(cipher,getNonce(seq),sessionState.sessionKey);}
 if(!plain){console.error('[WebBridge] frame rejected by secretbox, len',cipher.length,'expected seq',seq.toString(),'first:',Array.from(cipher.slice(0,4)));return null;}
 sessionState.encSeqRecv=seq;return plain;}
-function getRendezvousWsUrl(){const api=getApiServer();const rs=localStorage.getItem('custom-rendezvous-server');let host,wsPort,secure;if(rs){const parts=rs.split(':');host=parts[0];const rzPort=parseInt(parts[1])||21116;wsPort=rzPort+2;secure=false;}else if(api&&api!=='http://127.0.0.1:21114'){try{const url=new URL(api);host=url.hostname;wsPort=parseInt(url.port)||(url.protocol==='https:'?443:80);secure=url.protocol==='https:';}catch(e){return null;}}else{return null;}
-return`${secure ? 'wss' : 'ws'}://${host}:${wsPort}/ws/id`;}
+function getRendezvousWsUrl(){
+	const api = getApiServer();
+	const rs = localStorage.getItem('custom-rendezvous-server');
+
+	const pageSecure = (window.location && window.location.protocol === 'https:');
+	const pageHost = window.location.hostname;
+	const pagePort = window.location.port;
+
+	let host = '', wsPort = '', secure = false;
+
+	if (rs) {
+		// rs 可能是 host 或 host:port 或带协议的 URL
+		try {
+			const parsed = new URL(rs.includes('://') ? rs : (pageSecure ? 'https://' + rs : 'http://' + rs));
+			host = parsed.hostname;
+			wsPort = pagePort || parsed.port || (pageSecure ? '443' : '80');
+			secure = (parsed.protocol === 'https:' || parsed.protocol === 'wss:');
+		} catch (e) {
+			const parts = rs.split(':');
+			host = parts[0] || pageHost;
+			wsPort = pagePort || parts[1] || (pageSecure ? '443' : '80');
+			secure = pageSecure;
+		}
+	} else {
+		// 没有 custom rendezvous，则从 api server 推断（但优先以 page location 为准以避免混合内容）
+		try {
+			const u = new URL(api);
+			host = u.hostname || pageHost;
+			wsPort = pagePort || u.port || (pageSecure ? '443' : '80');
+			secure = (u.protocol === 'https:' || u.protocol === 'wss:') || pageSecure;
+		} catch (e) {
+			host = pageHost;
+			wsPort = pagePort || (pageSecure ? '443' : '80');
+			secure = pageSecure;
+		}
+	}
+
+	// 优先用页面协议决定 scheme，避免 HTTPS 页面加载 ws://（混合内容）
+	const scheme = pageSecure ? 'wss' : (secure ? 'wss' : 'ws');
+	if (!wsPort) wsPort = pageSecure ? '443' : '80';
+	return `${scheme}://${host}:${wsPort}/ws/id`;
+}
 function fireOnlineCallback(onlines,offlines){const evt=JSON.stringify({name:'callback_query_onlines',onlines:onlines.join(','),offlines:offlines.join(',')});setTimeout(()=>{if(typeof window.onRegisteredEvent==='function')window.onRegisteredEvent(evt);},0);}
 function queryOnlines(value){let ids=[];try{ids=JSON.parse(value||'[]');}catch(e){return;}
 if(!ids.length)return;const wsUrl=getRendezvousWsUrl();if(!wsUrl){fireOnlineCallback([],ids);return;}
 const myId=localStorage.getItem('id')||'';const msg=buildOnlineRequest(myId,ids);const ws=new WebSocket(wsUrl);ws.binaryType='arraybuffer';const timeout=setTimeout(()=>{ws.close();fireOnlineCallback([],ids);},5000);ws.onopen=()=>ws.send(msg);ws.onmessage=(e)=>{clearTimeout(timeout);ws.close();const data=new Uint8Array(e.data);try{const orBytes=parseRendezvousFields(data)[MSG.ONLINE_RESPONSE];if(orBytes instanceof Uint8Array&&orBytes.length){const states=parseOnlineResponse(orBytes);const onlines=[],offlines=[];for(let i=0;i<ids.length;i++){const bit=0x01<<(7-i%8);(states[(i/8)|0]&bit)?onlines.push(ids[i]):offlines.push(ids[i]);}
 fireOnlineCallback(onlines,offlines);return;}
 fireOnlineCallback([],ids);}catch(err){console.error('[WebBridge] parse online response error:',err);fireOnlineCallback([],ids);}};ws.onerror=()=>{clearTimeout(timeout);fireOnlineCallback([],ids);};}
-let sessionState={rzWs:null,relayWs:null,peerId:'',connType:0,uuid:'',relayServer:'',signedIdPk:null,signPk:null,password:'',isFileTransfer:false,isViewCamera:false,isTerminal:false,closed:false,rzTimeout:null,relayTimeout:null,rzRegWs:null,rzRegTimeout:null,sessionKey:null,encSeqSend:0n,encSeqRecv:0n,secured:false,hashSalt:'',hashChallenge:'',loginPassword:'',keepAliveTimer:null,displayWidth:0,displayHeight:0,loggedIn:false,pc:null,dataChannel:null,webrtcSessionKey:'',webrtcConnected:false,webrtcOffer:'',webrtcAnswerPending:false,dcRecvAcc:null,dcTransport:false,_offerPromise:null,_preferenceTimer:null,_iceResendTimers:[],_pendingRemoteIceCandidates:[],webrtcIpVersion:'',_gatheredCandidates:{},};function getRelayWsUrl(relayServer){const api=getApiServer();let url;try{url=new URL(api);}catch(e){return null;}
-const secure=url.protocol==='https:';const wsPort=parseInt(url.port)||(secure?443:80);if(relayServer){const parts=relayServer.split(':');const host=parts[0];return`${secure ? 'wss' : 'ws'}://${host}:${wsPort}/ws/relay`;}else{return`${secure ? 'wss' : 'ws'}://${url.hostname}:${wsPort}/ws/relay`;}}
+let sessionState={rzWs:null,relayWs:null,peerId:'',connType:0,uuid:'',relayServer:'',signedIdPk:null,signPk:null,password:'',isFileTransfer:false,isViewCamera:false,isTerminal:false,closed:false,rzTimeout:null,relayTimeout:null,rzRegWs:null,rzRegTimeout:null,sessionKey:null,encSeqSend:0n,encSeqRecv:0n,secured:false,hashSalt:'',hashChallenge:'',loginPassword:'',keepAliveTimer:null,displayWidth:0,displayHeight:0,loggedIn:false,pc:null,dataChannel:null,webrtcSessionKey:'',webrtcConnected:false,webrtcOffer:'',webrtcAnswerPending:false,dcRecvAcc:null,dcTransport:false,_offerPromise:null,_preferenceTimer:null,_iceResendTimers:[],_pendingRemoteIceCandidates:[],webrtcIpVersion:'',_gatheredCandidates:{},};
+function getRelayWsUrl(relayServer){
+	// relayServer 可能为空或为 host[:port] 或带协议的 URL
+	const api = getApiServer();
+
+	const pageSecure = (window.location && window.location.protocol === 'https:');
+	const pageHost = window.location.hostname;
+	const pagePort = window.location.port;
+
+	let host = pageHost;
+	let wsPort = pagePort || (pageSecure ? '443' : '80');
+	let secure = pageSecure;
+
+	// 先从 api 推断默认 host/port
+	try {
+		const u = new URL(api);
+		host = u.hostname || host;
+		wsPort = pagePort || u.port || wsPort;
+		secure = (u.protocol === 'https:' || u.protocol === 'wss:') || secure;
+	} catch (e) {
+		// ignore
+	}
+
+	// 如果 relayServer 指定了覆盖值，则解析它
+	if (relayServer) {
+		try {
+			const parsed = new URL(relayServer.includes('://') ? relayServer : (pageSecure ? 'https://' + relayServer : 'http://' + relayServer));
+			host = parsed.hostname || host;
+			wsPort = pagePort || parsed.port || wsPort;
+			secure = (parsed.protocol === 'https:' || parsed.protocol === 'wss:') || secure;
+		} catch (e) {
+			// 可能是 host:port 或只是 host
+			const parts = String(relayServer).split(':');
+			if (parts[0]) host = parts[0];
+			if (parts[1] && !pagePort) wsPort = parts[1];
+		}
+	}
+
+	const scheme = pageSecure ? 'wss' : (secure ? 'wss' : 'ws');
+	if (!wsPort) wsPort = pageSecure ? '443' : '80';
+	// 注意：relay 的路径在原实现中可能是 '/ws/relay' 或其他，这里使用 '/ws/relay'（如你项目原实现不一样，请改回对应路径）
+	return `${scheme}://${host}:${wsPort}/ws/relay`;
+}
 const WEBRTC_FRAG_MORE=1;const WEBRTC_FRAG_END=0;const WEBRTC_MAX_FRAG_PAYLOAD=60000;const WEBRTC_PREFERENCE_WINDOW_DEFAULT_MS=2500;const WEBRTC_ICE_RESEND_DELAY_MS=400;const DEFAULT_ICE_SERVERS=['stun:stun.cloudflare.com:3478','stun:stun.l.google.com:19302','stun:stun.antisip.com:3478','stun:stun.nextcloud.com:443',];function getRelayFallbackDelayMs(){const raw=localStorage.getItem('option:local:relay-fallback-delay')||'';const secs=parseFloat(raw.trim());if(isFinite(secs)&&secs>0){return Math.round(secs*1000);}
 return WEBRTC_PREFERENCE_WINDOW_DEFAULT_MS;}
 function getWebRtcIceServers(){const cfg=localStorage.getItem('ice-servers')||'';const servers=[];let hasStun=false;for(const url of cfg.split(',').map(s=>s.trim()).filter(Boolean)){if(/^stuns?:/i.test(url))hasStun=true;servers.push({urls:[url]});}
