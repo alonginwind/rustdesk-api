@@ -1,4 +1,4 @@
-const VERSION='1.5.1';const BUILD_DATE='2026-10-17 03:59:31';const APP_NAME='RustDesk';let _originalTitle='';let _originalIcon='';const _CONN_ICONS={secure:'icons/favicon_secure.png',secure_relay:'icons/favicon_secure_relay.png',insecure:'icons/favicon_insecure.png',insecure_relay:'icons/favicon_insecure_relay.png',};const DEBUG=(()=>{try{return new URLSearchParams(location.search).has('debug');}catch(e){return false;}})();function dbg(...args){if(DEBUG)console.log(...args);}
+const VERSION='1.5.1';const BUILD_DATE='2026-10-20 03:35:13';const APP_NAME='RustDesk';let _originalTitle='';let _originalIcon='';const _CONN_ICONS={secure:'icons/favicon_secure.png',secure_relay:'icons/favicon_secure_relay.png',insecure:'icons/favicon_insecure.png',insecure_relay:'icons/favicon_insecure_relay.png',};const DEBUG=(()=>{try{return new URLSearchParams(location.search).has('debug');}catch(e){return false;}})();function dbg(...args){if(DEBUG)console.log(...args);}
 const isBytes=(v)=>v instanceof Uint8Array&&v.length>0;const byteLen=(v)=>(isBytes(v)?v.length+' bytes':'null');function dbgFrame(what,data,preview){if(!DEBUG){return;}
 const head=Array.from(data.slice(0,preview===undefined?20:preview));dbg('[WebBridge] '+what+', bytes=',data.length,'first:',head);}
 function generateId(){const r=crypto.getRandomValues(new Uint32Array(1))[0];return String(1000000000+(r%1000000000));}
@@ -102,7 +102,9 @@ function decryptFrame(cipher){if(cipher.length<=1){return cipher;}
 const seq=sessionState.encSeqRecv+1n;let plain;if(RD){plain=RD.secretboxOpenSeq(cipher,Number(seq),sessionState.sessionKey);}else{plain=nacl.secretbox.open(cipher,getNonce(seq),sessionState.sessionKey);}
 if(!plain){console.error('[WebBridge] frame rejected by secretbox, len',cipher.length,'expected seq',seq.toString(),'first:',Array.from(cipher.slice(0,4)));return null;}
 sessionState.encSeqRecv=seq;return plain;}
-function getRendezvousWsUrl(){const api=getApiServer();const rs=localStorage.getItem('custom-rendezvous-server');let host,wsPort,secure;if(rs){const parts=rs.split(':');host=parts[0];const rzPort=parseInt(parts[1])||21116;wsPort=rzPort+2;secure=false;}else if(api&&api!=='http://127.0.0.1:21114'){try{const url=new URL(api);host=url.hostname;wsPort=parseInt(url.port)||(url.protocol==='https:'?443:80);secure=url.protocol==='https:';}catch(e){return null;}}else{return null;}
+function getRendezvousWsUrl(){const api=getApiServer();let host,wsPort,secure;if(api&&api!=='http://127.0.0.1:21114'){try{const url=new URL(api);host=url.hostname;wsPort=parseInt(url.port)||(url.protocol==='https:'?443:80);secure=url.protocol==='https:';}catch(e){return null;}}
+const rs=localStorage.getItem('custom-rendezvous-server');if(rs){const parts=rs.split(':');host=parts[0];if(secure===undefined){const rzPort=parseInt(parts[1])||21116;wsPort=rzPort+2;secure=false;}}
+if(secure===undefined){return null;}
 return`${secure ? 'wss' : 'ws'}://${host}:${wsPort}/ws/id`;}
 function fireOnlineCallback(onlines,offlines){const evt=JSON.stringify({name:'callback_query_onlines',onlines:onlines.join(','),offlines:offlines.join(',')});setTimeout(()=>{if(typeof window.onRegisteredEvent==='function')window.onRegisteredEvent(evt);},0);}
 function queryOnlines(value){let ids=[];try{ids=JSON.parse(value||'[]');}catch(e){return;}
