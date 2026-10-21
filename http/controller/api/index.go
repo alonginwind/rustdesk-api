@@ -96,7 +96,7 @@ func (i *Index) Heartbeat(c *gin.Context) {
 			mergedConfig["preset-address-book-name"] = service.AllService.AddressBookService.CollectionInfoById(peer.AbId).Name
 			mergedConfig["preset-device-username"] = peer.Username
 			mergedConfig["preset-device-name"] = peer.Hostname
-		} else {
+		} else if peer.Alias == "" {
 			mergedConfig["preset-address-book-name"] = ""
 			mergedConfig["preset-device-username"] = ""
 			mergedConfig["preset-device-name"] = ""
