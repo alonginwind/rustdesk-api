@@ -41,7 +41,31 @@ env:
   SKIP_DOCKER_HUB: ${{ github.event.inputs.SKIP_DOCKER_HUB || 'false' }}
   SKIP_GHCR: ${{ github.event.inputs.SKIP_GHCR || 'false' }}
 jobs:
+  changelog:
+    name: Create Release
+    # 仅 v* tag 运行：创建正式 release 并写入 changelog；test* tag 跳过（草稿 release 由 build 的 softprops 以 draft 自建）；手动触发跳过
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && !startsWith(github.ref, 'refs/tags/test')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up npm
+        uses: actions/setup-node@v2
+        with:
+          node-version: '20'
+
+      - name: Create release with changelog
+        run: npx changelogithub
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build:
+    needs: changelog
+    # changelog 失败时不阻塞构建，由后续步骤降级自行创建 release
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
 
     strategy:
@@ -141,20 +165,19 @@ jobs:
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          # test* tag 保持草稿，v* tag 正式发布
+          draft: ${{ startsWith(github.ref, 'refs/tags/test') }}
           files: |
             ${{ matrix.job.goos}}-${{ matrix.job.platform }}.${{matrix.job.file_ext}}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate Changelog
-        if: startsWith(github.ref, 'refs/tags/') && github.event_name == 'push'
-        run: npx changelogithub # or changelogithub@0.12 if ensure the stable result
-        env:
-          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-
   deb-package:
     name: debian package - ${{ matrix.job.platform }}
     needs: build
+    # 显式检查 build 结果并放行上游 changelog 被跳过的情况（默认 success() 会传递上游 skip）
+    # test* tag 跳过：test 前缀版本号不符合 Debian 规范（必须以数字开头），仅发布二进制与草稿 release
+    if: ${{ !cancelled() && needs.build.result == 'success' && !startsWith(github.ref, 'refs/tags/test') }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -228,6 +251,9 @@ jobs:
   docker:
     name: Push Docker Image
     needs: build
+    # 仅 test* tag 不推送镜像；v* tag 与手动触发均照常推送（手动触发时 TAG=latest）
+    # 显式检查 build 结果并放行上游 changelog 被跳过的情况（默认 success() 会传递上游 skip）
+    if: ${{ !cancelled() && needs.build.result == 'success' && !startsWith(github.ref, 'refs/tags/test') }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -353,6 +379,8 @@ jobs:
   docker-manifest:
     name: Push Docker Manifest
     needs: docker
+    # 显式检查 docker 结果并放行上游 changelog 被跳过的情况（默认 success() 会传递上游 skip）
+    if: ${{ !cancelled() && needs.docker.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Extract version from tag
