@@ -6,12 +6,17 @@ import "github.com/lejianwen/rustdesk-api/v2/model/custom_types"
 // RustDesk 设备 ID 只含数字与字母，不会与真实设备冲突
 const UnboundDefaultPeerId = "__unbound_default__"
 
+// McDefaultPeerId 主控端默认策略的保留 peer_id
+// 主控端只有一条全局策略，不经心跳下发，经登录接口响应下发
+const McDefaultPeerId = "__mc_default__"
+
 // PeerStrategy 被控端策略配置
 // 对应 RustDesk 客户端 sync.rs 中心跳响应的 strategy 字段
 // 通过心跳接口下发给被控端，被控端收到后会应用 config_options 到本地配置
+// 主控端全局策略也存于本表（peer_id 为 McDefaultPeerId 保留值），复用同一存储结构
 type PeerStrategy struct {
 	IdModel
-	PeerId        string                `json:"peer_id" gorm:"default:'';not null;uniqueIndex"` // 关联 peer.id
+	PeerId        string                `json:"peer_id" gorm:"default:'';not null;uniqueIndex"` // 关联 peer.id；空值为默认策略，保留值见上方常量
 	ConfigOptions custom_types.AutoJson `json:"config_options" gorm:"not null;" swaggertype:"object,string"` // HashMap<String,String> 的 JSON
 	ModifiedAt    int64                 `json:"modified_at" gorm:"default:0;not null;"` // 策略版本时间戳，用于变更检测
 	TimeModel

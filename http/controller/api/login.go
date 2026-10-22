@@ -91,11 +91,23 @@ func (l *Login) Login(c *gin.Context) {
 		Platform: f.DeviceInfo.Os,
 	})
 
+	clientStrategy, clientModifiedAt := ClientStrategyForPeer()
 	c.JSON(http.StatusOK, apiResp.LoginRes{
-		AccessToken: ut.Token,
-		Type:        "access_token",
-		User:        *(&apiResp.UserPayload{}).FromUser(u),
+		AccessToken:      ut.Token,
+		Type:             "access_token",
+		User:             *(&apiResp.UserPayload{}).FromUser(u),
+		ClientStrategy:   clientStrategy,
+		ClientModifiedAt: clientModifiedAt,
 	})
+}
+
+// ClientStrategyForPeer 组装下发给登录主控端的全局策略
+// 主控端只有一条全局策略（不区分设备），经登录接口响应下发给所有登录的主控端
+// 无策略记录时返回空配置与 0，客户端比对本地时间戳不等时应用空配置并归零，
+// 与心跳在策略被清空后的行为一致
+func ClientStrategyForPeer() (apiResp.ClientStrategyPayload, int64) {
+	ps := service.AllService.PeerStrategyService.FindDefaultMC()
+	return apiResp.ClientStrategyPayload{ConfigOptions: service.AllService.PeerStrategyService.GetConfigOptions(ps)}, ps.ModifiedAt
 }
 
 // LoginOptions

@@ -129,10 +129,13 @@ func (o *Oauth) OidcAuthQuery(c *gin.Context) {
 	if u == nil || ut == nil {
 		return
 	}
+	clientStrategy, clientModifiedAt := ClientStrategyForPeer()
 	c.JSON(http.StatusOK, apiResp.LoginRes{
-		AccessToken: ut.Token,
-		Type:        "access_token",
-		User:        *(&apiResp.UserPayload{}).FromUser(u),
+		AccessToken:      ut.Token,
+		Type:             "access_token",
+		User:             *(&apiResp.UserPayload{}).FromUser(u),
+		ClientStrategy:   clientStrategy,
+		ClientModifiedAt: clientModifiedAt,
 	})
 }
 

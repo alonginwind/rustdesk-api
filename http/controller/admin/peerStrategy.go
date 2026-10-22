@@ -34,7 +34,7 @@ func (ct *PeerStrategy) List(c *gin.Context) {
 		return
 	}
 	res := service.AllService.PeerStrategyService.List(query.Page, query.PageSize, func(tx *gorm.DB) {
-		tx.Where("peer_id != '' AND peer_id != ?", model.UnboundDefaultPeerId) // 排除默认策略
+		tx.Where("peer_id != '' AND peer_id NOT IN ?", []string{model.UnboundDefaultPeerId, model.McDefaultPeerId}) // 排除默认策略与主控端策略
 		if query.PeerId != "" {
 			tx.Where("peer_id like ?", "%"+query.PeerId+"%")
 		}
@@ -271,5 +271,51 @@ func (ct *PeerStrategy) UpdateDefaultUnbound(c *gin.Context) {
 	}
 	// 重新查询，确保返回完整记录（含 Id）
 	ps = service.AllService.PeerStrategyService.FindDefault2()
+	response.Success(c, ps)
+}
+
+// DefaultMC 获取主控端策略
+// @Tags 主控端策略
+// @Summary 获取主控端策略
+// @Description 获取主控端全局策略（唯一一条），登录接口响应中下发给所有登录的主控端
+// @Accept  json
+// @Produce json
+// @Success 200 {object} response.Response{data=model.PeerStrategy}
+// @Failure 500 {object} response.Response
+// @Router /admin/peer_strategy/default_mc [get]
+// @Security token
+func (ct *PeerStrategy) DefaultMC(c *gin.Context) {
+	ps := service.AllService.PeerStrategyService.FindDefaultMC()
+	if ps.Id == 0 {
+		// 无记录时填充保留 peer_id，供前端识别该行并路由到主控端策略接口
+		ps.PeerId = model.McDefaultPeerId
+	}
+	response.Success(c, ps)
+}
+
+// UpdateDefaultMC 设置/更新主控端策略
+// @Tags 主控端策略
+// @Summary 设置主控端策略
+// @Description 设置主控端全局策略（唯一一条），设备登录时随响应下发给主控端
+// @Accept  json
+// @Produce json
+// @Param body body admin.DefaultStrategyForm true "策略信息"
+// @Success 200 {object} response.Response{data=model.PeerStrategy}
+// @Failure 500 {object} response.Response
+// @Router /admin/peer_strategy/default_mc/update [post]
+// @Security token
+func (ct *PeerStrategy) UpdateDefaultMC(c *gin.Context) {
+	f := &admin.DefaultStrategyForm{}
+	if err := c.ShouldBindJSON(f); err != nil {
+		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError")+err.Error())
+		return
+	}
+	ps := f.ToPeerStrategy()
+	if err := service.AllService.PeerStrategyService.CreateOrUpdateDefaultMC(ps); err != nil {
+		response.Fail(c, 101, response.TranslateMsg(c, "OperationFailed")+err.Error())
+		return
+	}
+	// 重新查询，确保返回完整记录（含 Id）
+	ps = service.AllService.PeerStrategyService.FindDefaultMC()
 	response.Success(c, ps)
 }

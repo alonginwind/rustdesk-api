@@ -12,9 +12,11 @@ import (
 type PeerStrategyService struct{}
 
 // FindByPeerId 根据设备ID查找策略（不含默认策略）
+// 排除保留值：sysinfo 可匿名注册任意字符串 ID 的设备，若不排除，
+// 伪造保留值设备 ID 的心跳会读到对应默认/主控策略（主控策略本应仅登录后下发）
 func (pss *PeerStrategyService) FindByPeerId(peerId string) *model.PeerStrategy {
 	ps := &model.PeerStrategy{}
-	DB.Where("peer_id = ? AND peer_id != ''", peerId).First(ps)
+	DB.Where("peer_id = ? AND peer_id NOT IN ?", peerId, []string{"", model.UnboundDefaultPeerId, model.McDefaultPeerId}).First(ps)
 	return ps
 }
 
@@ -29,6 +31,14 @@ func (pss *PeerStrategyService) FindDefault() *model.PeerStrategy {
 func (pss *PeerStrategyService) FindDefault2() *model.PeerStrategy {
 	ps := &model.PeerStrategy{}
 	DB.Where("peer_id = ?", model.UnboundDefaultPeerId).First(ps)
+	return ps
+}
+
+// FindDefaultMC 查找主控端默认策略（唯一一条，保留 peer_id 的记录）
+// 主控端只有这一条全局策略，不区分设备，经登录接口响应下发给所有登录的主控端
+func (pss *PeerStrategyService) FindDefaultMC() *model.PeerStrategy {
+	ps := &model.PeerStrategy{}
+	DB.Where("peer_id = ?", model.McDefaultPeerId).First(ps)
 	return ps
 }
 
@@ -54,6 +64,11 @@ func (pss *PeerStrategyService) CreateOrUpdateDefault(ps *model.PeerStrategy) er
 // CreateOrUpdateDefault2 创建或更新未绑定设备专用默认策略
 func (pss *PeerStrategyService) CreateOrUpdateDefault2(ps *model.PeerStrategy) error {
 	return pss.upsertDefault(ps, model.UnboundDefaultPeerId) // 强制保证使用保留的 peer_id
+}
+
+// CreateOrUpdateDefaultMC 创建或更新主控端默认策略（唯一一条）
+func (pss *PeerStrategyService) CreateOrUpdateDefaultMC(ps *model.PeerStrategy) error {
+	return pss.upsertDefault(ps, model.McDefaultPeerId) // 强制保证使用保留的 peer_id
 }
 
 // Info 根据主键查找

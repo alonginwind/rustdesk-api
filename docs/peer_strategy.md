@@ -4,6 +4,8 @@
 
 被控端策略通过心跳接口 (`/api/heartbeat`) 下发给被控端。被控端收到策略后，会将 `config_options` 中的配置应用到本地。
 
+主控端（控制端）策略通过登录接口 (`/api/login`、`/api/oidc/auth-query`) 响应中的 `client_strategy` 与 `client_modified_at` 字段下发，与被控端策略完全独立，详见文末[主控端策略](#主控端策略)章节。
+
 ### 策略优先级
 
 - **设备策略** > **默认策略**
@@ -397,9 +399,86 @@ POST /admin/peer_strategy/default/update
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `id` | uint | 主键 |
-| `peer_id` | string | 设备 ID（默认策略为空） |
+| `peer_id` | string | 设备 ID（默认策略为空，未绑定默认策略与主控端策略为保留值） |
 | `config_options` | object | 配置项 JSON |
 | `modified_at` | int64 | 策略版本时间戳 |
 | `created_at` | timestamp | 创建时间 |
 | `updated_at` | timestamp | 更新时间 |
 | `peer_alias` | string | 关联的设备别名（仅列表接口返回） |
+
+---
+
+## 主控端策略
+
+### 概述
+
+主控端（控制端）策略面向发起远程控制的一方，通过**登录接口**（`/api/login`、`/api/oidc/auth-query`）与 **`/api/currentUser`** 的响应下发，与被控端策略（心跳通道）完全独立，互不影响。
+
+由于主控端没有心跳（心跳由被控端服务进程发送），策略在每次登录时随响应下发：无任何策略记录时也返回空配置与 `client_modified_at = 0`，客户端比对本地时间戳不一致时应用空配置并归零，与被控端策略被清空后的行为一致。
+
+> **注意**：客户端需支持消费 `client_strategy` / `client_modified_at` 字段（比对本地 `client_strategy_timestamp`，不一致时应用 `config_options` 并更新时间戳）。官方原版客户端会忽略这两个字段。客户端本地需使用独立于被控端（`strategy_timestamp`）的时间戳，避免两条通道互相覆盖。
+
+### 策略优先级
+
+主控端策略不区分设备，全局只有一条策略，对所有登录的主控端统一下发，无设备级策略、无优先级合并。
+
+### 下发机制
+
+1. 主控端登录（账号密码或 OIDC）→ 登录响应携带策略；客户端每次启动经 token 鉴权调用 `/api/currentUser` 恢复登录态 → 响应同样携带策略（覆盖 token 自动登录免重新输密码的设备，策略到达时机从"重新登录"提前到"每次启动"）
+2. 服务端查询主控端全局策略，在响应中返回 `client_strategy.config_options` 与 `client_modified_at`
+3. 客户端比对本地 `client_strategy_timestamp`，不一致时应用到本地配置并更新时间戳
+4. 策略更新后在客户端下次启动（currentUser）或下次登录时到达（无心跳周期推送）
+
+> `/api/currentUser` 响应用户字段平铺在顶层，新增键不影响旧客户端解析（Flutter/Sciter 均按已知字段提取，忽略未知键）。
+
+### 登录响应示例
+
+```json
+POST /api/login
+{
+  "username": "admin",
+  "password": "xxx",
+  "id": "123456789",
+  "uuid": "..."
+}
+```
+
+响应（节选）:
+
+```json
+{
+  "type": "access_token",
+  "access_token": "...",
+  "user": { ... },
+  "client_strategy": {
+    "config_options": {
+      "default-connect-password": "abcd1234",
+      "view_only": "N"
+    }
+  },
+  "client_modified_at": 1729500000000
+}
+```
+
+### 管理端接口
+
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `/admin/peer_strategy/default_mc` | GET | 获取主控端策略 |
+| `/admin/peer_strategy/default_mc/update` | POST | 设置/更新主控端策略 |
+
+表单结构与被控端默认策略一致（仅 `config_options`，无 `peer_id`），存储时服务端强制使用保留 peer_id `__mc_default__`，重复设置幂等覆盖。
+
+### 适用配置项
+
+配置项 key 与被控端策略共用同一套（见上文各分类），但只有**控制端语义**的配置项有实际意义，例如：
+
+- `default-connect-password`：控制端连接远程设备的默认密码（密码解析的最后兜底）
+- 显示默认选项类（`view_only`、`show_remote_cursor`、`collapse_toolbar` 等）：控制端首次连接每个 peer 后的默认值
+- `enable-confirm-closing-tabs`、`enable-open-new-connections-in-tabs`、`allow-sync-clipboard-between-sessions`、`keep-awake-during-outgoing-sessions`：纯控制端行为
+
+被控端专属 key（如 `access-mode`、`enable-keyboard` 等权限项）对主控端无意义，不建议配置。
+
+### 数据模型
+
+与被控端策略共用 `peer_strategies` 表与 `PeerStrategy` 结构，主控端全局策略以保留 peer_id `__mc_default__` 存为唯一一行（复用 `peer_id` 唯一索引，无 schema 变更、无迁移），字段（`id`、`peer_id`、`config_options`、`modified_at`、`created_at`、`updated_at`）与被控端策略完全一致。被控端策略列表接口已排除该保留值，不会在列表中显示。

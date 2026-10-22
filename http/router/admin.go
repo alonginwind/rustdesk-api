@@ -331,6 +331,9 @@ func PeerStrategyBind(rg *gin.RouterGroup) {
 		aR.POST("/default/update", cont.UpdateDefault)
 		aR.GET("/default_unbound", cont.DefaultUnbound)
 		aR.POST("/default_unbound/update", cont.UpdateDefaultUnbound)
+		// 主控端策略（全局唯一一条，登录响应下发）
+		aR.GET("/default_mc", cont.DefaultMC)
+		aR.POST("/default_mc/update", cont.UpdateDefaultMC)
 	}
 }
 
