@@ -3,6 +3,10 @@ set -e
 
 SERVICE=rustdesk-api.service
 
+md5of() {
+    if [ -f "$1" ]; then md5sum < "$1" | cut -d' ' -f1; fi
+}
+
 if [ "$1" = "configure" ]; then
     mkdir -p /var/log/rustdesk-api
 fi
@@ -10,6 +14,31 @@ fi
 case "$1" in
     configure|abort-upgrade|abort-deconfigure|abort-remove)
       mkdir -p /var/lib/rustdesk-api/
+      # conf/ is the admin's. .<file>.dist-md5 holds the md5 of the default
+      # last installed or offered, so an untouched file follows new defaults
+      # and an edited one is kept, with each new default offered once.
+      for f in config.yaml admin/hello.html; do
+        cfg="/var/lib/rustdesk-api/conf/$f"
+        def="/usr/share/rustdesk-api/conf/$f"
+        rec="${cfg%/*}/.${cfg##*/}.dist-md5"
+        if [ -f "$cfg.dpkg-keep" ]; then
+          [ -e "$cfg" ] || mv "$cfg.dpkg-keep" "$cfg"
+          rm -f "$cfg.dpkg-keep"
+        fi
+        new=$(md5of "$def")
+        cur=$(md5of "$cfg")
+        old=$(cat "$rec" 2>/dev/null || true)
+        if [ "$cur" != "$new" ]; then
+          if [ ! -e "$cfg" ] || [ "$cur" = "$old" ]; then
+            mkdir -p "${cfg%/*}"
+            cp "$def" "$cfg"
+          elif [ "$old" != "$new" ]; then
+            cp "$def" "$cfg.dpkg-dist"
+            echo "rustdesk-api: kept your changes in $cfg, new default is in $cfg.dpkg-dist" >&2
+          fi
+        fi
+        echo "$new" > "$rec"
+      done
 	  deb-systemd-helper unmask "${SERVICE}" >/dev/null || true
 	  if deb-systemd-helper --quiet was-enabled "${SERVICE}"; then
 		deb-systemd-invoke enable "${SERVICE}" >/dev/null || true

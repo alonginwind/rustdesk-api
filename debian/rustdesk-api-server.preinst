@@ -1,0 +1,20 @@
+#!/bin/sh
+set -e
+
+# Versions before this one shipped conf/ under /var/lib/rustdesk-api, so dpkg
+# deletes those files once this version stops shipping them. Save the ones
+# the admin changed for postinst to put back. An untouched old default is
+# left to dpkg and postinst installs the new default in its place.
+if [ "$1" = "upgrade" ]; then
+    sums="${DPKG_ADMINDIR:-/var/lib/dpkg}/info/rustdesk-api-server.md5sums"
+    for f in config.yaml admin/hello.html; do
+        cfg="/var/lib/rustdesk-api/conf/$f"
+        [ -f "$cfg" ] || continue
+        old=$(grep "  var/lib/rustdesk-api/conf/$f\$" "$sums" 2>/dev/null | cut -d' ' -f1)
+        if [ "$(md5sum < "$cfg" | cut -d' ' -f1)" != "$old" ]; then
+            cp -a "$cfg" "$cfg.dpkg-keep"
+        fi
+    done
+fi
+
+exit 0
