@@ -92,3 +92,31 @@ func TestInitEnvOverridesFileAndDefaults(t *testing.T) {
 		t.Errorf("app.captcha-threshold = %d, want -1 from env over default", c.App.CaptchaThreshold)
 	}
 }
+
+func TestInitMissingLdapAllowGroupStaysEmpty(t *testing.T) {
+	c := initFromFile(t, `
+ldap:
+  enable: true
+  user:
+    admin-group: "cn=admins,dc=corp,dc=test"
+`)
+
+	if c.Ldap.User.AllowGroup != "" {
+		t.Errorf("ldap.user.allow-group = %q, want empty when missing", c.Ldap.User.AllowGroup)
+	}
+	if c.Ldap.User.AdminGroup != "cn=admins,dc=corp,dc=test" {
+		t.Errorf("ldap.user.admin-group = %q, want value from file", c.Ldap.User.AdminGroup)
+	}
+}
+
+func TestInitEnvSetsMissingLdapAllowGroup(t *testing.T) {
+	t.Setenv("RUSTDESK_API_LDAP_USER_ALLOW_GROUP", "cn=staff,dc=corp,dc=test")
+	c := initFromFile(t, `
+ldap:
+  enable: true
+`)
+
+	if c.Ldap.User.AllowGroup != "cn=staff,dc=corp,dc=test" {
+		t.Errorf("ldap.user.allow-group = %q, want value from env", c.Ldap.User.AllowGroup)
+	}
+}

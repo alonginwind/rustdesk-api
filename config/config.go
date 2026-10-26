@@ -78,7 +78,13 @@ func Init(rowVal *Config, path string) *viper.Viper {
 		panic(fmt.Errorf("Fatal error default config: %s \n", err))
 	}
 	for _, k := range d.AllKeys() {
-		v.SetDefault(k, d.Get(k))
+		val := d.Get(k)
+		// The shipped value is an example DN. As a default it would lock out
+		// non-admin LDAP users whose config predates the key.
+		if k == "ldap.user.allow-group" {
+			val = ""
+		}
+		v.SetDefault(k, val)
 	}
 	v.SetConfigFile(path)
 	v.SetConfigType("yaml")
