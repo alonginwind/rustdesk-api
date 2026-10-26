@@ -1,7 +1,9 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
+	rustdeskapi "github.com/lejianwen/rustdesk-api/v2"
 	"github.com/spf13/viper"
 	"strings"
 	"time"
@@ -67,6 +69,17 @@ func Init(rowVal *Config, path string) *viper.Viper {
 	v.AutomaticEnv()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 	v.SetEnvPrefix("RUSTDESK_API")
+	// Shipped defaults fill keys missing from the file. Not via MergeInConfig:
+	// viper's merge drops file values whose YAML type differs from the
+	// default, e.g. postgresql.port: 5433.
+	d := viper.New()
+	d.SetConfigType("yaml")
+	if err := d.ReadConfig(bytes.NewReader(rustdeskapi.DefaultConfigYAML)); err != nil {
+		panic(fmt.Errorf("Fatal error default config: %s \n", err))
+	}
+	for _, k := range d.AllKeys() {
+		v.SetDefault(k, d.Get(k))
+	}
 	v.SetConfigFile(path)
 	v.SetConfigType("yaml")
 	err := v.ReadInConfig()
