@@ -163,3 +163,8 @@ other = "Banned."
 description = "Register success, wait admin confirm."
 one = "Register success, wait admin confirm."
 other = "Register success, wait admin confirm."
+
+[NoCaptchaRequired]
+description = "No captcha required."
+one = "No captcha required."
+other = "No captcha required."

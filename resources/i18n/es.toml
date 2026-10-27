@@ -172,3 +172,8 @@ other = "Prohibido."
 description = "Register success, wait admin confirm."
 one = "Registro exitoso, espere la confirmación del administrador."
 other = "Registro exitoso, espere la confirmación del administrador."
+
+[NoCaptchaRequired]
+description = "No captcha required."
+one = "No se requiere captcha."
+other = "No se requiere captcha."

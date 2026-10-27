@@ -166,3 +166,8 @@ other = "금지됨."
 description = "Register success wait admin confirm."
 one = "가입 성공, 관리자 확인 대기 중."
 other = "가입 성공, 관리자 확인 대기 중."
+
+[NoCaptchaRequired]
+description = "No captcha required."
+one = "보안 문자가 필요하지 않습니다."
+other = "보안 문자가 필요하지 않습니다."

@@ -165,3 +165,8 @@ other = "已被封禁。"
 description = "Register success, wait for admin confirm."
 one = "注册成功，请等待管理员审核。"
 other = "注册成功，请等待管理员审核。"
+
+[NoCaptchaRequired]
+description = "No captcha required."
+one = "无需验证码。"
+other = "无需验证码。"

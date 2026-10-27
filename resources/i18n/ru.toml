@@ -172,3 +172,8 @@ other = "Заблокировано."
 description = "Register success wait admin confirm."
 one = "Регистрация прошла успешно, ожидайте подтверждения администратора."
 other = "Регистрация прошла успешно, ожидайте подтверждения администратора."
+
+[NoCaptchaRequired]
+description = "No captcha required."
+one = "Капча не требуется."
+other = "Капча не требуется."

@@ -172,3 +172,8 @@ other = "Banni."
 description = "Register success wait admin confirm."
 one = "Inscription réussie, veuillez attendre la confirmation de l'administrateur."
 other = "Inscription réussie, veuillez attendre la confirmation de l'administrateur."
+
+[NoCaptchaRequired]
+description = "No captcha required."
+one = "Aucun captcha requis."
+other = "Aucun captcha requis."

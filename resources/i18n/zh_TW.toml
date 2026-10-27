@@ -172,3 +172,8 @@ other = "已被禁用。"
 description = "Register success, wait admin confirm."
 one = "註冊成功，等待管理員確認。"
 other = "註冊成功，等待管理員確認。"
+
+[NoCaptchaRequired]
+description = "No captcha required."
+one = "無需驗證碼。"
+other = "無需驗證碼。"
