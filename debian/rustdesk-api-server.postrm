@@ -7,6 +7,7 @@ systemctl --system daemon-reload >/dev/null || true
 
 if [ "$1" = "purge" ]; then
 	rm -rf /var/log/rustdesk-api/rustdesk-api.*
+	rm -rf /var/lib/rustdesk-api/conf
 	deb-systemd-helper purge "${SERVICE}" >/dev/null || true
 	deb-systemd-helper unmask "${SERVICE}" >/dev/null || true
 fi
