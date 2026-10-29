@@ -1,6 +1,6 @@
 # Independent device addresses and address books
 
-Local development branch: `feat/peer-address-books`. No PR or production installation is part of this change. The existing OIDC fix remains in its separate PR/branch.
+This change separates registered device identity, the default connection destination and independent address-book contacts. It also includes the empty OIDC-provider-list fix. Deploy matching backend and frontend versions together.
 
 ## Contract
 
@@ -33,7 +33,7 @@ The HTTP/GORM/SQLite suite covers account ownership, multi-book copies, repeats 
 
 Full `go test ./...` is deliberately not used: pre-existing cache tests write to a hardcoded Redis host `192.168.1.168:6379`. No unrelated LAN service is accessed for this feature.
 
-The matching frontend branch has unit tests and a Playwright smoke script against synthetic API responses. The smoke script verifies rendering, editing the device default, multi-book selection, the personal form, editing one book destination and JavaScript errors. It is not an acceptance test against a real RustDesk desktop session.
+The matching frontend changes have unit tests and a Playwright smoke script against synthetic API responses. The smoke script verifies rendering, editing the device default, multi-book selection, the personal form, editing one book destination and JavaScript errors. It is not an acceptance test against a real RustDesk desktop session.
 
 ## Release boundary
 
