@@ -121,12 +121,17 @@ func (ct *Peer) List(c *gin.Context) {
 			tx.Where("last_online_ip like ?", "%"+query.Ip+"%")
 		}
 		if query.Alias != "" && query.Alias != "time" {
-			tx.Where("alias like ?", "%"+query.Alias+"%")
+			pattern := "%" + query.Alias + "%"
+			tx.Where("alias LIKE ? OR EXISTS (SELECT 1 FROM address_books b WHERE (b.peer_row_id = peers.row_id OR (b.peer_row_id = 0 AND b.id = peers.id)) AND b.alias LIKE ?)", pattern, pattern)
 		}
 		if query.Version != "" {
 			tx.Where("version like ?", "%"+query.Version+"%")
 		}
 	})
+	if err := service.AllService.PeerService.DecorateBooks(res.Peers, nil, true); err != nil {
+		response.Fail(c, 101, response.TranslateMsg(c, "OperationFailed"))
+		return
+	}
 	response.Success(c, res)
 }
 
@@ -154,6 +159,11 @@ func (ct *Peer) Update(c *gin.Context) {
 	errList := global.Validator.ValidStruct(c, f)
 	if len(errList) > 0 {
 		response.Fail(c, 101, errList[0])
+		return
+	}
+	old := service.AllService.PeerService.InfoByRowId(f.RowId)
+	if old.RowId == 0 || (f.Id != "" && f.Id != old.Id) {
+		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
 		return
 	}
 	u := f.ToPeer()
