@@ -58,58 +58,72 @@ func (s *AddressBookService) ListByUserIds(userIds []uint, page, pageSize uint) 
 
 // AddAddressBook
 func (s *AddressBookService) AddAddressBook(ab *model.AddressBook) error {
-	return DB.Create(ab).Error
+	return s.CreateEntries([]*model.AddressBook{ab})
 }
 
 // UpdateAddressBook
+// UpdateAddressBook handles the legacy personal/default book only. Named books
+// must survive a client using the old full-snapshot protocol.
 func (s *AddressBookService) UpdateAddressBook(abs []*model.AddressBook, userId uint) error {
-	//比较peers和数据库中的数据，如果peers中的数据在数据库中不存在，则添加，如果存在则更新，如果数据库中的数据在peers中不存在，则删除
-	// 开始事务
-	tx := DB.Begin()
-	//1. 获取数据库中的数据
-	var dbABs []*model.AddressBook
-	tx.Where("user_id = ?", userId).Find(&dbABs)
-	//2. 比较peers和数据库中的数据
-	//2.1 获取peers中的id
-	aBIds := make(map[string]*model.AddressBook)
-	for _, ab := range abs {
-		aBIds[ab.Id] = ab
-	}
-	//2.2 获取数据库中的id
-	dbABIds := make(map[string]*model.AddressBook)
-	for _, dbAb := range dbABs {
-		dbABIds[dbAb.Id] = dbAb
-	}
-	//2.3 比较peers和数据库中的数据
-	for id, ab := range aBIds {
-		dbAB, ok := dbABIds[id]
-		ab.UserId = userId
-		if !ok {
-			//添加
-			if ab.Platform == "" || ab.Username == "" || ab.Hostname == "" {
-				peer := AllService.PeerService.FindById(ab.Id)
+	return bookTransaction([]uint{userId}, func(tx *gorm.DB) error {
+		var old []*model.AddressBook
+		if err := tx.Where("user_id = ? AND collection_id = 0", userId).Find(&old).Error; err != nil {
+			return err
+		}
+		retained := map[string]bool{}
+		for _, ab := range abs {
+			ab.UserId = userId
+			ab.CollectionId = 0
+			ab.RowId = 0
+			ab.PeerRowId = 0
+			if err := validateBook(tx, ab); err != nil {
+				return err
+			}
+			if retained[ab.Id] {
+				continue
+			}
+			retained[ab.Id] = true
+			var existing *model.AddressBook
+			for _, item := range old {
+				if item.Id == ab.Id {
+					existing = item
+					break
+				}
+			}
+			if existing != nil {
+				ab.RowId = existing.RowId
+				ab.PeerRowId = existing.PeerRowId
+				if err := tx.Model(ab).Select("*").Omit("created_at").Updates(ab).Error; err != nil {
+					return err
+				}
+			} else {
+				var peer model.Peer
+				if err := tx.Where("id = ?", ab.Id).Find(&peer).Error; err != nil {
+					return err
+				}
 				if peer.RowId != 0 {
-					ab.Platform = AllService.AddressBookService.PlatformFromOs(peer.Os)
+					ab.PeerRowId = peer.RowId
+					ab.Platform = s.PlatformFromOs(peer.Os)
 					ab.Username = peer.Username
 					ab.Hostname = peer.Hostname
 				}
+				if len(ab.Tags) == 0 {
+					ab.Tags = []byte("[]")
+				}
+				if err := tx.Create(ab).Error; err != nil {
+					return err
+				}
 			}
-			tx.Create(ab)
-		} else {
-			//更新
-			tx.Model(&model.AddressBook{}).Where("row_id = ?", dbAB.RowId).Updates(ab)
 		}
-	}
-	//2.4 删除
-	for id, dbAB := range dbABIds {
-		_, ok := aBIds[id]
-		if !ok {
-			tx.Delete(dbAB)
+		for _, ab := range old {
+			if !retained[ab.Id] {
+				if err := tx.Delete(ab).Error; err != nil {
+					return err
+				}
+			}
 		}
-	}
-	tx.Commit()
-	return nil
-
+		return nil
+	})
 }
 
 func (s *AddressBookService) List(page, pageSize uint, where func(tx *gorm.DB)) (res *model.AddressBookList) {
@@ -131,7 +145,9 @@ func (s *AddressBookService) List(page, pageSize uint, where func(tx *gorm.DB)) 
 
 func (s *AddressBookService) FromPeer(peer *model.Peer) (a *model.AddressBook) {
 	a = &model.AddressBook{}
-	a.Id = peer.Id
+	a.Id = peer.Address()
+	a.PeerRowId = peer.RowId
+	a.Alias = peer.Alias
 	a.Username = peer.Username
 	a.Hostname = peer.Hostname
 	a.UserId = peer.UserId
@@ -141,13 +157,7 @@ func (s *AddressBookService) FromPeer(peer *model.Peer) (a *model.AddressBook) {
 
 // Create 创建
 func (s *AddressBookService) Create(u *model.AddressBook) error {
-	res := DB.Create(u).Error
-	return res
-}
-
-// 清理在其他全员集合中的旧条目
-func (s *AddressBookService) CleanUp(peerId string, collectionId uint) {
-	DB.Where("id = ? AND user_id = 1 AND collection_id != ?", peerId, collectionId).Delete(&model.AddressBook{})
+	return s.CreateEntries([]*model.AddressBook{u})
 }
 
 func (s *AddressBookService) Delete(u *model.AddressBook) error {
@@ -166,7 +176,7 @@ func (s *AddressBookService) UpdateByMap(u *model.AddressBook, data map[string]i
 
 // UpdateAll 更新
 func (s *AddressBookService) UpdateAll(u *model.AddressBook) error {
-	return DB.Model(u).Select("*").Omit("created_at").Updates(u).Error
+	return s.UpdateEntry(u)
 }
 
 // ShareByWebClient 分享
@@ -390,67 +400,34 @@ func (s *AddressBookService) CheckCollectionOwner(uid uint, cid uint) bool {
 
 // ApplyPresetToAddressBook 根据客户端上报的预设值自动将设备添加到指定地址簿集合
 // 参数：
-//   peerId   - 设备ID
-//   os       - 操作系统信息
-//   abName   - preset-address-book-name，地址簿集合名称
-//   abAlias  - preset-address-book-alias，地址簿中的别名
-//   hostname - 主机名（客户端已将 preset-device-name 写入 hostname 字段）
-//   username - 用户名（客户端已将 preset-device-username 写入 username 字段）
+//
+//	peerId   - 设备ID
+//	os       - 操作系统信息
+//	abName   - preset-address-book-name，地址簿集合名称
+//	abAlias  - preset-address-book-alias，地址簿中的别名
+//	hostname - 主机名（客户端已将 preset-device-name 写入 hostname 字段）
+//	username - 用户名（客户端已将 preset-device-username 写入 username 字段）
 func (s *AddressBookService) ApplyPresetToAddressBook(peerRowId uint, peerId, os, abName, abAlias, hostname, username string) {
 	if abName == "" {
 		return
 	}
-
-	// 查找地址簿集合（admin用户 user_id=1 下）
 	collection := &model.AddressBookCollection{}
 	if DB.Where("name = ? AND user_id = 1", abName).First(collection).Error != nil {
 		return
 	}
-
-	// 检查该集合下是否已有该设备的条目
-	existing := &model.AddressBook{}
-	if DB.Where("id = ? AND collection_id = ?", peerId, collection.Id).First(existing).Error == nil {
-		// 已存在，仅用非空值更新，避免覆盖管理员手动设置的别名
-		updates := map[string]interface{}{}
-		if abAlias != "" {
-			updates["alias"] = abAlias
-		}
-		if hostname != "" {
-			updates["hostname"] = hostname
-		}
-		if username != "" {
-			updates["username"] = username
-		}
-		if len(updates) > 0 {
-			DB.Model(existing).Updates(updates)
-		}
-		if peerRowId > 0 {
-			AllService.PeerService.UpdateAlias(peerRowId, collection.Id, abAlias, username, hostname)
-		}
+	peer := AllService.PeerService.InfoByRowId(peerRowId)
+	target := peerId
+	if peer.RowId > 0 {
+		target = peer.Address()
+	}
+	ab := &model.AddressBook{Id: target, PeerRowId: peer.RowId, Alias: abAlias, Hostname: hostname, Username: username, Platform: s.PlatformFromOs(os), Tags: custom_types.AutoJson("[]"), UserId: 1, CollectionId: collection.Id}
+	// A client re-reporting its preset must not replace a user's local address,
+	// alias or memberships. Existing rows are retained by CreateEntries.
+	if err := s.CreateEntries([]*model.AddressBook{ab}); err != nil {
 		return
 	}
-
-	// 创建新条目
-	platform := s.PlatformFromOs(os)
-	ab := &model.AddressBook{
-		Id:           peerId,
-		Alias:        abAlias,
-		Hostname:     hostname,
-		Username:     username,
-		Platform:     platform,
-		Tags:         custom_types.AutoJson("[]"),
-		UserId:       1,
-		CollectionId: collection.Id,
-	}
-	if err := DB.Create(ab).Error; err != nil {
-		// 创建失败时静默处理，不影响 sysinfo 主流程
-		_ = err
-	} else {
-		// 删除该设备在其他全员集合中的旧条目
-		s.CleanUp(peerId, collection.Id)
-		if peerRowId > 0 {
-			AllService.PeerService.UpdateAlias(peerRowId, collection.Id, abAlias, username, hostname)
-		}
+	if peer.RowId > 0 {
+		_ = AllService.PeerService.UpdateAlias(peer.RowId, collection.Id, abAlias, username, hostname)
 	}
 }
 

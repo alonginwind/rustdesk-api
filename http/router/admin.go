@@ -165,6 +165,7 @@ func PeerBind(rg *gin.RouterGroup) {
 		aR.POST("/update", cont.Update)
 		aR.POST("/delete", cont.Delete)
 		aR.POST("/batchDelete", cont.BatchDelete)
+		aR.POST("/connectionAddress", cont.ConnectionAddress)
 	}
 }
 
@@ -307,6 +308,7 @@ func MyBind(rg *gin.RouterGroup) {
 	{
 		cont := &my.Peer{}
 		rg.GET("/my/peer/list", cont.List)
+		rg.POST("/my/peer/connectionAddress", cont.ConnectionAddress)
 
 	}
 

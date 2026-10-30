@@ -6,6 +6,7 @@ import (
 )
 
 type AddressBookForm struct {
+	PeerRowId        uint     `json:"peer_row_id"`
 	RowId            uint     `json:"row_id"`
 	Id               string   `json:"id" validate:"required"`
 	Username         string   `json:"username" `
@@ -31,6 +32,7 @@ func (a AddressBookForm) ToAddressBook() *model.AddressBook {
 	tags, _ := json.Marshal(a.Tags)
 
 	return &model.AddressBook{
+		PeerRowId:        a.PeerRowId,
 		RowId:            a.RowId,
 		Id:               a.Id,
 		Username:         a.Username,
@@ -58,6 +60,7 @@ func (a AddressBookForm) ToAddressBooks() []*model.AddressBook {
 	abs := make([]*model.AddressBook, 0, len(a.UserIds))
 	for _, userId := range a.UserIds {
 		abs = append(abs, &model.AddressBook{
+			PeerRowId:        a.PeerRowId,
 			RowId:            a.RowId,
 			Id:               a.Id,
 			Username:         a.Username,
@@ -125,10 +128,13 @@ type AddressBookCollectionRuleQuery struct {
 }
 
 type BatchCreateFromPeersForm struct {
-	CollectionId uint     `json:"collection_id"`
-	PeerIds      []uint   `json:"peer_ids"`
-	Tags         []string `json:"tags"`
-	UserId       uint     `json:"user_id"`
+	CollectionIds     []uint   `json:"collection_ids"`
+	ConnectionAddress *string  `json:"connection_address"`
+	Alias             *string  `json:"alias"`
+	CollectionId      uint     `json:"collection_id"`
+	PeerIds           []uint   `json:"peer_ids"`
+	Tags              []string `json:"tags"`
+	UserId            uint     `json:"user_id"`
 }
 type BatchUpdateTagsForm struct {
 	RowIds []uint   `json:"row_ids"`

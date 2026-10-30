@@ -7,11 +7,8 @@ import (
 	"github.com/lejianwen/rustdesk-api/v2/http/request/admin"
 	"github.com/lejianwen/rustdesk-api/v2/http/response"
 	"github.com/lejianwen/rustdesk-api/v2/service"
-	"github.com/lejianwen/rustdesk-api/v2/model"
 	"gorm.io/gorm"
 	"strconv"
-	"sync"
-	"fmt"
 )
 
 type AddressBook struct {
@@ -63,6 +60,10 @@ func (ct *AddressBook) Create(c *gin.Context) {
 		return
 	}
 	t := f.ToAddressBook()
+	if !service.AllService.AddressBookService.CheckPeerLink(t, false) {
+		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
+		return
+	}
 	if t.UserId == 0 {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
 		return
@@ -100,73 +101,29 @@ func (ct *AddressBook) Create(c *gin.Context) {
 func (ct *AddressBook) BatchCreate(c *gin.Context) {
 	f := &admin.AddressBookForm{}
 	if err := c.ShouldBindJSON(f); err != nil {
-		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError")+err.Error())
-		return
-	}
-	errList := global.Validator.ValidStruct(c, f)
-	if len(errList) > 0 {
-		response.Fail(c, 101, errList[0])
-		return
-	}
-	ul := len(f.UserIds)
-
-	if ul == 0 {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
 		return
 	}
-	if ul > 1 {
-		//多用户置空标签
-		f.Tags = []string{}
-		//多用户只能创建到默认地址簿
+	if len(f.UserIds) == 0 || f.Id == "" {
+		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
+		return
+	}
+	if len(f.UserIds) > 1 {
 		f.CollectionId = 0
+		f.Tags = []string{}
 	}
-
-	//创建标签
-	/*for _, fu := range f.UserIds {
-		if fu == 0 {
-			continue
-		}
-		for _, ft := range f.Tags {
-			exTag := service.AllService.TagService.InfoByUserIdAndNameAndCollectionId(fu, ft, 0)
-			if exTag.Id == 0 {
-				service.AllService.TagService.Create(&model.Tag{
-					UserId: fu,
-					Name:   ft,
-				})
-			}
-		}
-	}*/
-	ts := f.ToAddressBooks()
-	for _, t := range ts {
-		if t.UserId == 0 {
-			continue
-		}
-		key := fmt.Sprintf("%d_%d_%d", t.UserId, t.Id, t.CollectionId)
-		v, _ := global.AddressBookLockMap.LoadOrStore(key, &sync.Mutex{})
-		mu := v.(*sync.Mutex)
-
-		mu.Lock()
-		ex := service.AllService.AddressBookService.InfoByUserIdAndIdAndCid(t.UserId, t.Id, t.CollectionId)
-		if ex.RowId == 0 {
-			err := service.AllService.AddressBookService.Create(t)
-			if err == nil {
-				service.AllService.AddressBookService.CleanUp(t.Id, t.CollectionId)
-			}
-		} else {
-			t.RowId = ex.RowId
-			service.AllService.AddressBookService.Update(t)
-		}
-		mu.Unlock()
-	}
-
-	if len(ts) == 1 {
-		peer := service.AllService.PeerService.FindById(ts[0].Id)
-		if peer != nil && peer.RowId != 0 {
-			upp := &model.Peer{RowId: peer.RowId, Alias: ts[0].Alias}
-			service.AllService.PeerService.Update(upp)
+	entries := f.ToAddressBooks()
+	for _, ab := range entries {
+		ab.RowId = 0
+		if !service.AllService.AddressBookService.CheckPeerLink(ab, false) {
+			response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
+			return
 		}
 	}
-
+	if err := service.AllService.AddressBookService.CreateEntries(entries); err != nil {
+		response.Fail(c, 101, response.TranslateMsg(c, "OperationFailed"))
+		return
+	}
 	response.Success(c, nil)
 }
 
@@ -255,6 +212,10 @@ func (ct *AddressBook) Update(c *gin.Context) {
 		return
 	}
 	t := f.ToAddressBook()
+	if !service.AllService.AddressBookService.CheckPeerLink(t, false) {
+		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
+		return
+	}
 	if t.CollectionId > 0 && !service.AllService.AddressBookService.CheckCollectionOwner(t.UserId, t.CollectionId) {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
 		return
@@ -263,11 +224,6 @@ func (ct *AddressBook) Update(c *gin.Context) {
 	if err != nil {
 		response.Fail(c, 101, response.TranslateMsg(c, "OperationFailed")+err.Error())
 		return
-	}
-	// 同步更新 peers 表中的别名
-	peer := service.AllService.PeerService.FindById(t.Id)
-	if peer.RowId > 0 {
-		_ = service.AllService.PeerService.UpdateAlias(peer.RowId, t.CollectionId, t.Alias, t.Username, t.Hostname)
 	}
 	response.Success(c, nil)
 }
@@ -309,11 +265,6 @@ func (ct *AddressBook) Delete(c *gin.Context) {
 	})
 	err := service.AllService.AddressBookService.Delete(t)
 	if err == nil {
-		// 置空 peers 表中的别名
-		peer := service.AllService.PeerService.FindById(t.Id)
-		if peer.RowId > 0 {
-			_ = service.AllService.PeerService.ClearAlias(peer.RowId)
-		}
 		response.Success(c, nil)
 		return
 	}
@@ -364,43 +315,21 @@ func (ct *AddressBook) ShareByWebClient(c *gin.Context) {
 func (ct *AddressBook) BatchCreateFromPeers(c *gin.Context) {
 	f := &admin.BatchCreateFromPeersForm{}
 	if err := c.ShouldBindJSON(f); err != nil {
-		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError")+err.Error())
-		return
-	}
-
-	if f.UserId == 0 {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
 		return
 	}
-
-	if f.CollectionId != 0 {
-		collection := service.AllService.AddressBookService.CollectionInfoById(f.CollectionId)
-		if collection.Id == 0 {
-			response.Fail(c, 101, response.TranslateMsg(c, "ItemNotFound"))
-			return
-		}
+	books := f.CollectionIds
+	if len(books) == 0 {
+		books = []uint{f.CollectionId}
 	}
-
-	pl := int64(len(f.PeerIds))
-	peers := service.AllService.PeerService.List(1, uint(pl), "alias", func(tx *gorm.DB) {
-		tx.Where("row_id in ?", f.PeerIds)
-	})
-	if peers.Total == 0 || pl != peers.Total {
-		response.Fail(c, 101, response.TranslateMsg(c, "ItemNotFound"))
+	if f.ConnectionAddress != nil && len(f.PeerIds) != 1 {
+		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
 		return
 	}
-
 	tags, _ := json.Marshal(f.Tags)
-	for _, peer := range peers.Peers {
-		ab := service.AllService.AddressBookService.FromPeer(peer)
-		ab.Tags = tags
-		ab.CollectionId = f.CollectionId
-		ab.UserId = f.UserId
-		ex := service.AllService.AddressBookService.InfoByUserIdAndIdAndCid(f.UserId, ab.Id, ab.CollectionId)
-		if ex.RowId != 0 {
-			continue
-		}
-		service.AllService.AddressBookService.Create(ab)
+	if err := service.AllService.AddressBookService.CopyPeersToBooks(f.PeerIds, books, f.UserId, false, f.ConnectionAddress, f.Alias, tags); err != nil {
+		response.Fail(c, 101, response.TranslateMsg(c, "OperationFailed"))
+		return
 	}
 	response.Success(c, nil)
 }

@@ -2,15 +2,14 @@ package my
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/lejianwen/rustdesk-api/v2/global"
 	"github.com/lejianwen/rustdesk-api/v2/http/request/admin"
 	"github.com/lejianwen/rustdesk-api/v2/http/response"
 	"github.com/lejianwen/rustdesk-api/v2/service"
-	"github.com/lejianwen/rustdesk-api/v2/model"
 	"gorm.io/gorm"
 	"sync"
-	"fmt"
 )
 
 type AddressBook struct{}
@@ -86,16 +85,22 @@ func (ct *AddressBook) Create(c *gin.Context) {
 		return
 	}
 	t := f.ToAddressBook()
-	if t.UserId != 1 {
-		u := service.AllService.UserService.CurUser(c)
-		t.UserId = u.Id
+	u := service.AllService.UserService.CurUser(c)
+	if t.UserId != 0 && t.UserId != u.Id {
+		response.Fail(c, 101, response.TranslateMsg(c, "NoAccess"))
+		return
+	}
+	t.UserId = u.Id
+	if !service.AllService.AddressBookService.CheckPeerLink(t, true) {
+		response.Fail(c, 101, response.TranslateMsg(c, "NoAccess"))
+		return
 	}
 	if t.CollectionId > 0 && !service.AllService.AddressBookService.CheckCollectionOwner(t.UserId, t.CollectionId) {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
 		return
 	}
 
-	key := fmt.Sprintf("%d_%d_%d", t.UserId, t.Id, t.CollectionId)
+	key := fmt.Sprintf("%d_%s_%d", t.UserId, t.Id, t.CollectionId)
 	v, _ := global.AddressBookLockMap.LoadOrStore(key, &sync.Mutex{})
 	mu := v.(*sync.Mutex)
 
@@ -112,12 +117,6 @@ func (ct *AddressBook) Create(c *gin.Context) {
 	if err != nil {
 		response.Fail(c, 101, response.TranslateMsg(c, "OperationFailed")+err.Error())
 		return
-	}
-
-	peer := service.AllService.PeerService.FindById(t.Id)
-	if peer != nil && peer.RowId != 0 {
-		upp := &model.Peer{RowId: peer.RowId, Alias: t.Alias}
-		service.AllService.PeerService.Update(upp)
 	}
 
 	response.Success(c, nil)
@@ -165,6 +164,10 @@ func (ct *AddressBook) Update(c *gin.Context) {
 		return
 	}
 	t := f.ToAddressBook()
+	if t.PeerRowId != 0 && t.PeerRowId != ex.PeerRowId && !service.AllService.AddressBookService.CheckPeerLink(t, true) {
+		response.Fail(c, 101, response.TranslateMsg(c, "NoAccess"))
+		return
+	}
 	if t.CollectionId > 0 && !service.AllService.AddressBookService.CheckCollectionOwner(t.UserId, t.CollectionId) {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
 		return
@@ -221,46 +224,22 @@ func (ct *AddressBook) Delete(c *gin.Context) {
 func (ct *AddressBook) BatchCreateFromPeers(c *gin.Context) {
 	f := &admin.BatchCreateFromPeersForm{}
 	if err := c.ShouldBindJSON(f); err != nil {
-		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError")+err.Error())
-		return
-	}
-	u := service.AllService.UserService.CurUser(c)
-
-	if f.CollectionId != 0 {
-		collection := service.AllService.AddressBookService.CollectionInfoById(f.CollectionId)
-		if collection.Id == 0 {
-			response.Fail(c, 101, response.TranslateMsg(c, "ItemNotFound"))
-			return
-		}
-		if collection.UserId != u.Id {
-			response.Fail(c, 101, response.TranslateMsg(c, "NoAccess"))
-			return
-		}
-	}
-	if len(f.PeerIds) == 0 {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
 		return
 	}
-	pl := int64(len(f.PeerIds))
-	peers := service.AllService.PeerService.List(1, uint(pl), "alias", func(tx *gorm.DB) {
-		tx.Where("row_id in ?", f.PeerIds)
-		tx.Where("user_id = ?", u.Id)
-	})
-	if peers.Total == 0 || pl != peers.Total {
-		response.Fail(c, 101, response.TranslateMsg(c, "ItemNotFound"))
+	u := service.AllService.UserService.CurUser(c)
+	books := f.CollectionIds
+	if len(books) == 0 {
+		books = []uint{f.CollectionId}
+	}
+	if f.ConnectionAddress != nil && len(f.PeerIds) != 1 {
+		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
 		return
 	}
-
 	tags, _ := json.Marshal(f.Tags)
-	for _, peer := range peers.Peers {
-		ab := service.AllService.AddressBookService.FromPeer(peer)
-		ab.Tags = tags
-		ab.CollectionId = f.CollectionId
-		ex := service.AllService.AddressBookService.InfoByUserIdAndIdAndCid(u.Id, ab.Id, ab.CollectionId)
-		if ex.RowId != 0 {
-			continue
-		}
-		service.AllService.AddressBookService.Create(ab)
+	if err := service.AllService.AddressBookService.CopyPeersToBooks(f.PeerIds, books, u.Id, true, f.ConnectionAddress, f.Alias, tags); err != nil {
+		response.Fail(c, 101, response.TranslateMsg(c, "OperationFailed"))
+		return
 	}
 	response.Success(c, nil)
 }
