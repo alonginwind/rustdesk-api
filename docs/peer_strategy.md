@@ -124,6 +124,7 @@ POST /admin/peer_strategy/default/update
 | `direct-server` | 启用直接 IP 访问 | `Y`, `N` |
 | `direct-access-port` | 直接 IP 访问端口 | `21118` |
 | `allow-websocket` | 允许 WebSocket（>= 1.4.0） | `Y`, `N` |
+| `websocket-port` | 自定义 WebSocket 反向代理端口（`/ws/id`、`/ws/relay`）。仅对本机配置的服务器（自定义 ID 服务器、中继服务器等）生效，其他主机仍用默认端口；留空时使用 API 服务器端口，再退回默认端口。没有设置界面入口，只能通过策略/自定义客户端配置设置 | 端口号，如 `8443` |
 | `disable-udp` | 仅使用 TCP | `Y`, `N` |
 | `allow-insecure-tls-fallback` | 允许不安全 TLS 回退（>= 1.4.4） | `Y`, `N` |
 | `allow-https-21114` | 允许 21114 作为 HTTPS 端口（>= 1.3.9） | `Y`, `N` |
@@ -240,6 +241,7 @@ POST /admin/peer_strategy/default/update
 | 配置项 | 说明 | 可选值 |
 |--------|------|--------|
 | `enable-trusted-devices` | 启用信任设备（跳过 2FA） | `Y`, `N` |
+| `trusted-device-expiration-days` | 信任设备有效期 | `1`, `7`, `30`, `90`（默认）, `0`（永不过期） |
 | `allow-auto-update` | 允许自动更新（>= 1.4.6，Windows） | `Y`, `N` |
 | `keep-awake-during-incoming-sessions` | 传入会话时保持唤醒 | `Y`, `N` |
 | `keep-awake-during-outgoing-sessions` | 传出会话时保持唤醒 | `Y`, `N` |
@@ -251,11 +253,15 @@ POST /admin/peer_strategy/default/update
 | `remove-preset-password-warning` | 移除预设密码的安全警告 | `Y`, `N` |
 | `enable-check-update` | 启用检查更新 | `Y`, `N` |
 
+> **注意**：`enable-trusted-devices` 与 `trusted-device-expiration-days` 属于认证类配置，下发后被控端会走信任设备凭据更新路径：切换 `enable-trusted-devices`（或改变 `2fa` 配置）会吊销该设备上全部已信任设备，用户需重新完成二次验证；只改 `trusted-device-expiration-days` 时按新有效期重算已有信任记录的到期时间，不会吊销。
+
 ### HARD_SETTINGS（自定义客户端硬配置）
 
 以下配置项来源于客户端 `HARD_SETTINGS`，通常通过自定义客户端配置的 `data` 段预设。当 `HARD_SETTINGS` 中未预设对应 key 时，客户端会回退到 `Config::get_option` 读取，因此可以通过策略 `config_options` 下发生效。
 
 > **优先级**：自定义客户端 `HARD_SETTINGS` 硬编码值 > 策略 `config_options` 下发值 > 内置默认值。如果自定义客户端已在 `data` 段中预设了某个 key，则策略下发无法覆盖。
+>
+> 例外：`HARD_SETTINGS` 中的 `password` / `salt`（预设固定密码）与 `conn-type=outgoing` 的判定没有回退到 `Config::get_option`，因此**无法通过策略下发**，只能写进自定义客户端。
 
 | 配置项 | 说明 | 可选值 |
 |--------|------|--------|
@@ -389,6 +395,7 @@ POST /admin/peer_strategy/default/update
 3. **空值处理**：如果策略中某个配置项的值为空字符串，且默认高级设置也为空，则会删除该配置项（回退到内置默认值）
 4. **默认策略**：默认策略的 `peer_id` 为空，列表接口不会显示默认策略
 5. **设备策略唯一性**：每个设备只能有一条策略，重复创建会返回错误
+6. **移除 key 不等于恢复默认**：服务端只下发策略中存在的 key，从策略里删掉某个 key、或删除整条设备策略/默认策略，客户端都不会主动清除本地已应用的值。要回退需把该 key 的值设为空字符串（按第 3 条规则回退内置默认）再下发一次
 
 ---
 
@@ -414,9 +421,9 @@ POST /admin/peer_strategy/default/update
 
 主控端（控制端）策略面向发起远程控制的一方，通过**登录接口**（`/api/login`、`/api/oidc/auth-query`）与 **`/api/currentUser`** 的响应下发，与被控端策略（心跳通道）完全独立，互不影响。
 
-由于主控端没有心跳（心跳由被控端服务进程发送），策略在每次登录时随响应下发：无任何策略记录时也返回空配置与 `client_modified_at = 0`，客户端比对本地时间戳不一致时应用空配置并归零，与被控端策略被清空后的行为一致。
+由于主控端没有心跳（心跳由被控端服务进程发送），策略在每次登录时随响应下发：无任何策略记录时也返回空配置与 `client_modified_at = 0`，客户端比对本地时间戳不一致时只会更新本地时间戳，不会删除已经应用的旧值（与被控端策略被清空后的行为一致）。要撤销某个已下发的配置项，需显式把该 key 的值设为空字符串（按「注意事项」中的空值处理规则回退内置默认），而不是删除整条策略。
 
-> **注意**：客户端需支持消费 `client_strategy` / `client_modified_at` 字段（比对本地 `client_strategy_timestamp`，不一致时应用 `config_options` 并更新时间戳）。官方原版客户端会忽略这两个字段。客户端本地需使用独立于被控端（`strategy_timestamp`）的时间戳，避免两条通道互相覆盖。
+> **注意**：官方原版客户端会忽略 `client_strategy` / `client_modified_at` 这两个字段，本项目客户端（Flutter 桌面/移动、Sciter、WebClient）已实现消费，行为见下方[客户端应用逻辑](#客户端应用逻辑)。
 
 ### 策略优先级
 
@@ -430,6 +437,24 @@ POST /admin/peer_strategy/default/update
 4. 策略更新后在客户端下次启动（currentUser）或下次登录时到达（无心跳周期推送）
 
 > `/api/currentUser` 响应用户字段平铺在顶层，新增键不影响旧客户端解析（Flutter/Sciter 均按已知字段提取，忽略未知键）。
+
+### 客户端应用逻辑
+
+1. 登录响应（账号密码、OIDC）与 `/api/currentUser` 响应都会触发应用
+2. 桌面/移动端（Flutter、Sciter）由 Rust 侧的 `apply_client_strategy` 统一合并：时间戳存于独立的本地键 `client_strategy_timestamp`，与被控端心跳通道的 `strategy_timestamp` 完全隔离，两条通道不会互相覆盖
+3. 幂等且可重试：`client_modified_at` 与本地时间戳相同则直接跳过；只有应用成功才写入时间戳，失败时下次登录或下次启动（`/api/currentUser`）自动重试
+4. 策略值写入本机 `CONFIG2.options`，与用户在设置页手动修改是同一份存储；策略只在新时间戳到达时应用一次，之后用户在设置页的改动不会被回滚，直到服务端再次更新主控端策略（`modified_at` 变化）
+5. 桌面端应用后会把本次变更的 key 以"设置页改配置"的同一路径推送给后台服务进程，否则后续配置同步/写盘会丢弃这些值；服务进程不可达时本次不落盘、也不写时间戳，等下次重试
+6. WebClient 由 JS/Dart 侧直接写入浏览器本地配置（不经过 Rust 合并逻辑，同样用 `client_strategy_timestamp` 判重）；浏览器端没有服务进程，因此下面的忽略列表与 IPC 推送对它不适用，这类 key 在 WebClient 上无实际作用
+
+桌面/移动端（走 Rust 合并逻辑）会直接丢弃以下配置项（它们只对提供远程连接服务的一端有意义，避免覆盖被控端自身配置），需要生效请改用被控端策略：
+
+| 配置项 | 忽略原因 |
+|--------|----------|
+| `reset-pwd` | 只重置被控端本地永久密码 |
+| `2fa` | 被控端的登录二次验证配置 |
+| `enable-trusted-devices` | 被控端信任设备开关 |
+| `trusted-device-expiration-days` | 被控端信任设备有效期 |
 
 ### 登录响应示例
 
@@ -478,6 +503,8 @@ POST /api/login
 - `enable-confirm-closing-tabs`、`enable-open-new-connections-in-tabs`、`allow-sync-clipboard-between-sessions`、`keep-awake-during-outgoing-sessions`：纯控制端行为
 
 被控端专属 key（如 `access-mode`、`enable-keyboard` 等权限项）对主控端无意义，不建议配置。
+
+> 主控端策略只改变**发起登录的这台机器**的本地配置（它不会下发到任何被控端，也无法修改被控端的权限项）；反过来，被控端策略也无法把值送到纯主控端机器（没有心跳通道），两者互不替代。
 
 ### 数据模型
 
