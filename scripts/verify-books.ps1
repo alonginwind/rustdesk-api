@@ -24,7 +24,7 @@ try {
     if (Test-Path 'go.sum') { Copy-Item 'go.sum' (Join-Path $Scratch 'verify.sum') }
     & $Go mod tidy "-modfile=$modPath"
     if ($LASTEXITCODE -ne 0) { throw 'Module preparation failed' }
-    & $Go test "-modfile=$modPath" -timeout 180s ./http/controller/... ./http/request/... ./http/router ./service ./model/... -count=1
+    & $Go test "-modfile=$modPath" -timeout 180s ./config ./http/controller/... ./http/request/... ./http/router ./service ./model/... -count=1
     if ($LASTEXITCODE -ne 0) { throw 'API/book tests failed' }
     & $Go build "-modfile=$modPath" -o (Join-Path $Scratch 'apimain.exe') ./cmd/apimain.go
     if ($LASTEXITCODE -ne 0) { throw 'Build failed' }

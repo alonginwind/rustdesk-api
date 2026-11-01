@@ -49,6 +49,11 @@ func (ct *AddressBook) Detail(c *gin.Context) {
 // @Router /admin/address_book/create [post]
 // @Security token
 func (ct *AddressBook) Create(c *gin.Context) {
+	if !global.Config.App.DeviceAddressBooks {
+		ct.legacyCreate(c)
+		return
+	}
+
 	f := &admin.AddressBookForm{}
 	if err := c.ShouldBindJSON(f); err != nil {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError")+err.Error())
@@ -99,6 +104,11 @@ func (ct *AddressBook) Create(c *gin.Context) {
 // @Router /admin/address_book/batchCreate [post]
 // @Security token
 func (ct *AddressBook) BatchCreate(c *gin.Context) {
+	if !global.Config.App.DeviceAddressBooks {
+		ct.legacyBatchCreate(c)
+		return
+	}
+
 	f := &admin.AddressBookForm{}
 	if err := c.ShouldBindJSON(f); err != nil {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
@@ -192,6 +202,11 @@ func (ct *AddressBook) List(c *gin.Context) {
 // @Router /admin/address_book/update [post]
 // @Security token
 func (ct *AddressBook) Update(c *gin.Context) {
+	if !global.Config.App.DeviceAddressBooks {
+		ct.legacyUpdate(c)
+		return
+	}
+
 	f := &admin.AddressBookForm{}
 	if err := c.ShouldBindJSON(f); err != nil {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError")+err.Error())
@@ -240,6 +255,11 @@ func (ct *AddressBook) Update(c *gin.Context) {
 // @Router /admin/address_book/delete [post]
 // @Security token
 func (ct *AddressBook) Delete(c *gin.Context) {
+	if !global.Config.App.DeviceAddressBooks {
+		ct.legacyDelete(c)
+		return
+	}
+
 	f := &admin.AddressBookForm{}
 	if err := c.ShouldBindJSON(f); err != nil {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError")+err.Error())
@@ -313,6 +333,11 @@ func (ct *AddressBook) ShareByWebClient(c *gin.Context) {
 }
 
 func (ct *AddressBook) BatchCreateFromPeers(c *gin.Context) {
+	if !global.Config.App.DeviceAddressBooks {
+		ct.legacyBatchCreateFromPeers(c)
+		return
+	}
+
 	f := &admin.BatchCreateFromPeersForm{}
 	if err := c.ShouldBindJSON(f); err != nil {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))

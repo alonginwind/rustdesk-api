@@ -14,15 +14,16 @@ const (
 )
 
 type App struct {
-	WebClient        int           `mapstructure:"web-client"`
-	Register         bool          `mapstructure:"register"`
-	RegisterStatus   int           `mapstructure:"register-status"`
-	ShowSwagger      int           `mapstructure:"show-swagger"`
-	TokenExpire      time.Duration `mapstructure:"token-expire"`
-	WebSso           bool          `mapstructure:"web-sso"`
-	DisablePwdLogin  bool          `mapstructure:"disable-pwd-login"`
-	CaptchaThreshold int           `mapstructure:"captcha-threshold"`
-	BanThreshold     int           `mapstructure:"ban-threshold"`
+	DeviceAddressBooks bool          `mapstructure:"device-address-books"`
+	WebClient          int           `mapstructure:"web-client"`
+	Register           bool          `mapstructure:"register"`
+	RegisterStatus     int           `mapstructure:"register-status"`
+	ShowSwagger        int           `mapstructure:"show-swagger"`
+	TokenExpire        time.Duration `mapstructure:"token-expire"`
+	WebSso             bool          `mapstructure:"web-sso"`
+	DisablePwdLogin    bool          `mapstructure:"disable-pwd-login"`
+	CaptchaThreshold   int           `mapstructure:"captcha-threshold"`
+	BanThreshold       int           `mapstructure:"ban-threshold"`
 }
 type Admin struct {
 	Title           string `mapstructure:"title"`
@@ -67,6 +68,8 @@ func Init(rowVal *Config, path string) *viper.Viper {
 	v.AutomaticEnv()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 	v.SetEnvPrefix("RUSTDESK_API")
+	// A registered default also makes env-only opt-in visible to Unmarshal.
+	v.SetDefault("app.device-address-books", false)
 	v.SetConfigFile(path)
 	v.SetConfigType("yaml")
 	err := v.ReadInConfig()

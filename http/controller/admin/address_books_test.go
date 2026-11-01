@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -35,6 +36,12 @@ func fixture(t *testing.T) *gorm.DB {
 	oldDB, oldServices, oldLogger := service.DB, service.AllService, global.Logger
 	oldLocalizer, oldValidator := global.Localizer, global.Validator
 	oldPath := global.Config.Gin.ResourcesPath
+	flag := reflect.ValueOf(&global.Config.App).Elem().FieldByName("DeviceAddressBooks")
+	if flag.IsValid() {
+		old := flag.Bool()
+		flag.SetBool(true)
+		t.Cleanup(func() { flag.SetBool(old) })
+	}
 	service.DB = db
 	service.AllService = &service.Service{UserService: &service.UserService{}, PeerService: &service.PeerService{}, AddressBookService: &service.AddressBookService{}, PeerStrategyService: &service.PeerStrategyService{}}
 	global.Logger = logrus.New()

@@ -86,6 +86,11 @@ func (ct *Peer) Create(c *gin.Context) {
 // @Router /admin/peer/list [get]
 // @Security token
 func (ct *Peer) List(c *gin.Context) {
+	if !global.Config.App.DeviceAddressBooks {
+		ct.legacyList(c)
+		return
+	}
+
 	query := &admin.PeerQuery{}
 	if err := c.ShouldBindQuery(query); err != nil {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError")+err.Error())
@@ -147,6 +152,11 @@ func (ct *Peer) List(c *gin.Context) {
 // @Router /admin/peer/update [post]
 // @Security token
 func (ct *Peer) Update(c *gin.Context) {
+	if !global.Config.App.DeviceAddressBooks {
+		ct.legacyUpdate(c)
+		return
+	}
+
 	f := &admin.PeerForm{}
 	if err := c.ShouldBindJSON(f); err != nil {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError")+err.Error())

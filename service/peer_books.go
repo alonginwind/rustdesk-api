@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"github.com/lejianwen/rustdesk-api/v2/global"
 	"strings"
 
 	"github.com/lejianwen/rustdesk-api/v2/model"
@@ -45,6 +46,9 @@ func (ps *PeerService) DecorateBooks(peers []*model.Peer, viewer *model.User, ad
 
 // SetConnectionAddress only changes the template used by future book copies.
 func (ps *PeerService) SetConnectionAddress(rowId uint, address string, owner *uint) error {
+	if !global.Config.App.DeviceAddressBooks {
+		return errors.New("DeviceAddressBooksDisabled")
+	}
 	address = strings.TrimSpace(address)
 	if len(address) > 2048 || strings.ContainsAny(address, "\r\n\x00") {
 		return errors.New("ParamsError")

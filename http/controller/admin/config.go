@@ -45,7 +45,8 @@ func (co *Config) ServerConfig(c *gin.Context) {
 // @Security token
 func (co *Config) AppConfig(c *gin.Context) {
 	response.Success(c, &gin.H{
-		"web_client": global.Config.App.WebClient,
+		"web_client":           global.Config.App.WebClient,
+		"device_address_books": global.Config.App.DeviceAddressBooks,
 	})
 }
 

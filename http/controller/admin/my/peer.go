@@ -2,6 +2,7 @@ package my
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/lejianwen/rustdesk-api/v2/global"
 	"github.com/lejianwen/rustdesk-api/v2/http/request/admin"
 	"github.com/lejianwen/rustdesk-api/v2/http/response"
 	"github.com/lejianwen/rustdesk-api/v2/service"
@@ -29,6 +30,11 @@ type Peer struct {
 // @Router /admin/my/peer/list [get]
 // @Security token
 func (ct *Peer) List(c *gin.Context) {
+	if !global.Config.App.DeviceAddressBooks {
+		ct.legacyList(c)
+		return
+	}
+
 	query := &admin.PeerQuery{}
 	if err := c.ShouldBindQuery(query); err != nil {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError")+err.Error())

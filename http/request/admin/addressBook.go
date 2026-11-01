@@ -2,6 +2,7 @@ package admin
 
 import (
 	"encoding/json"
+	"github.com/lejianwen/rustdesk-api/v2/global"
 	"github.com/lejianwen/rustdesk-api/v2/model"
 )
 
@@ -28,6 +29,9 @@ type AddressBookForm struct {
 }
 
 func (a AddressBookForm) ToAddressBook() *model.AddressBook {
+	if !global.Config.App.DeviceAddressBooks {
+		a.PeerRowId = 0
+	}
 	//tags转换
 	tags, _ := json.Marshal(a.Tags)
 
@@ -54,6 +58,9 @@ func (a AddressBookForm) ToAddressBook() *model.AddressBook {
 
 }
 func (a AddressBookForm) ToAddressBooks() []*model.AddressBook {
+	if !global.Config.App.DeviceAddressBooks {
+		a.PeerRowId = 0
+	}
 	//tags转换
 	tags, _ := json.Marshal(a.Tags)
 

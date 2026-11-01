@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"github.com/google/uuid"
+	"github.com/lejianwen/rustdesk-api/v2/global"
 	"github.com/lejianwen/rustdesk-api/v2/model"
 	"github.com/lejianwen/rustdesk-api/v2/model/custom_types"
 	"gorm.io/gorm"
@@ -58,6 +59,10 @@ func (s *AddressBookService) ListByUserIds(userIds []uint, page, pageSize uint) 
 
 // AddAddressBook
 func (s *AddressBookService) AddAddressBook(ab *model.AddressBook) error {
+	if !global.Config.App.DeviceAddressBooks {
+		return s.legacyAddAddressBook(ab)
+	}
+
 	return s.CreateEntries([]*model.AddressBook{ab})
 }
 
@@ -65,6 +70,10 @@ func (s *AddressBookService) AddAddressBook(ab *model.AddressBook) error {
 // UpdateAddressBook handles the legacy personal/default book only. Named books
 // must survive a client using the old full-snapshot protocol.
 func (s *AddressBookService) UpdateAddressBook(abs []*model.AddressBook, userId uint) error {
+	if !global.Config.App.DeviceAddressBooks {
+		return s.legacyUpdateAddressBook(abs, userId)
+	}
+
 	return bookTransaction([]uint{userId}, func(tx *gorm.DB) error {
 		var old []*model.AddressBook
 		if err := tx.Where("user_id = ? AND collection_id = 0", userId).Find(&old).Error; err != nil {
@@ -144,6 +153,10 @@ func (s *AddressBookService) List(page, pageSize uint, where func(tx *gorm.DB)) 
 }
 
 func (s *AddressBookService) FromPeer(peer *model.Peer) (a *model.AddressBook) {
+	if !global.Config.App.DeviceAddressBooks {
+		return s.legacyFromPeer(peer)
+	}
+
 	a = &model.AddressBook{}
 	a.Id = peer.Address()
 	a.PeerRowId = peer.RowId
@@ -157,6 +170,10 @@ func (s *AddressBookService) FromPeer(peer *model.Peer) (a *model.AddressBook) {
 
 // Create 创建
 func (s *AddressBookService) Create(u *model.AddressBook) error {
+	if !global.Config.App.DeviceAddressBooks {
+		return s.legacyCreate(u)
+	}
+
 	return s.CreateEntries([]*model.AddressBook{u})
 }
 
@@ -176,6 +193,10 @@ func (s *AddressBookService) UpdateByMap(u *model.AddressBook, data map[string]i
 
 // UpdateAll 更新
 func (s *AddressBookService) UpdateAll(u *model.AddressBook) error {
+	if !global.Config.App.DeviceAddressBooks {
+		return s.legacyUpdateAll(u)
+	}
+
 	return s.UpdateEntry(u)
 }
 
@@ -408,6 +429,11 @@ func (s *AddressBookService) CheckCollectionOwner(uid uint, cid uint) bool {
 //	hostname - 主机名（客户端已将 preset-device-name 写入 hostname 字段）
 //	username - 用户名（客户端已将 preset-device-username 写入 username 字段）
 func (s *AddressBookService) ApplyPresetToAddressBook(peerRowId uint, peerId, os, abName, abAlias, hostname, username string) {
+	if !global.Config.App.DeviceAddressBooks {
+		s.legacyApplyPresetToAddressBook(peerRowId, peerId, os, abName, abAlias, hostname, username)
+		return
+	}
+
 	if abName == "" {
 		return
 	}
