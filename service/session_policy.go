@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -167,9 +168,25 @@ func (us *UserService) SaveSessionPolicy(value, revision string) error {
 		return err
 	}
 	encoder.Close()
-	var validation interface{}
-	if err = yaml.Unmarshal(encoded.Bytes(), &validation); err != nil {
+	var beforeValues, afterValues map[string]interface{}
+	if err = yaml.Unmarshal(old, &beforeValues); err != nil {
 		return err
+	}
+	if err = yaml.Unmarshal(encoded.Bytes(), &afterValues); err != nil {
+		return err
+	}
+	// Anchors may make one scalar feed several settings. Refuse a change if
+	// anything except the selected app.token-expire value would be affected.
+	for _, values := range []map[string]interface{}{beforeValues, afterValues} {
+		if app, ok := values["app"].(map[string]interface{}); ok {
+			delete(app, "token-expire")
+			if len(app) == 0 {
+				delete(values, "app")
+			}
+		}
+	}
+	if !reflect.DeepEqual(beforeValues, afterValues) {
+		return errors.New("editing token-expire would change other YAML values")
 	}
 	// Prepare the replacement before touching the live file. A read-only bind mount
 	// or unwritable directory produces an error and leaves the original intact.

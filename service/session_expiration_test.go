@@ -181,3 +181,19 @@ func TestSessionExpiryPreservesExplicitNegativeDuration(t *testing.T) {
 		t.Fatal("explicitly expired policy was changed into a valid session")
 	}
 }
+
+func TestSessionConfigDoesNotChangeSharedYamlAnchorValues(t *testing.T) {
+	text := "app:\n  token-expire: &shared 24h\njwt:\n  expire-duration: *shared\n"
+	path := sessionConfigFixture(t, text)
+	us := &UserService{}
+	current, err := us.SessionPolicy()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = us.SaveSessionPolicy("720h", current.Revision); err == nil {
+		t.Fatal("editing the anchor would change the independent JWT setting")
+	}
+	if data, _ := os.ReadFile(path); string(data) != text {
+		t.Fatal("shared configuration changed")
+	}
+}
