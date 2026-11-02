@@ -26,13 +26,9 @@ func (ct *AddressBook) legacyCreate(c *gin.Context) {
 		return
 	}
 	t := f.ToAddressBook()
-	u := service.AllService.UserService.CurUser(c)
-	// Authorization is independent of the selected book scheme.
-	if t.UserId != 0 && t.UserId != u.Id {
-		response.Fail(c, 101, response.TranslateMsg(c, "NoAccess"))
-		return
-	}
-	t.UserId = u.Id
+	// Legacy mode only adds to the admin shared address book: the owner is fixed to admin (1) and
+	// user_id from the request body is ignored.
+	t.UserId = 1
 	if t.CollectionId > 0 && !service.AllService.AddressBookService.CheckCollectionOwner(t.UserId, t.CollectionId) {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
 		return
