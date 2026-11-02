@@ -491,12 +491,18 @@ func (us *UserService) getAdminUserCount() int64 {
 
 // UserTokenExpireTimestamp 生成用户token过期时间
 func (us *UserService) UserTokenExpireTimestamp() int64 {
-	exp := Config.App.TokenExpire
-	if exp == 0 {
-		//默认七天
-		exp = 604800
+	return time.Now().Add(us.UserTokenLifetime()).Unix()
+}
+
+// UserTokenLifetime uses the same duration for issuing and renewing sessions.
+func (us *UserService) UserTokenLifetime() time.Duration {
+	if current := runtimeSessionLifetime.Load(); current > 0 {
+		return time.Duration(current)
 	}
-	return time.Now().Add(exp).Unix()
+	if Config.App.TokenExpire > 0 {
+		return Config.App.TokenExpire
+	}
+	return 7 * 24 * time.Hour
 }
 
 func (us *UserService) RefreshAccessToken(ut *model.UserToken) {
@@ -505,7 +511,10 @@ func (us *UserService) RefreshAccessToken(ut *model.UserToken) {
 }
 
 func (us *UserService) AutoRefreshAccessToken(ut *model.UserToken) {
-	if ut.ExpiredAt-time.Now().Unix() < Config.App.TokenExpire.Milliseconds()/3000 {
+	if ut.ExpiredAt <= time.Now().Unix() {
+		return
+	}
+	if ut.ExpiredAt-time.Now().Unix() < int64(us.UserTokenLifetime()/time.Second)/3 {
 		us.RefreshAccessToken(ut)
 	}
 }

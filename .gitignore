@@ -7,3 +7,5 @@ resources/admin
 release
 data/rustdeskapi.db
 .local-check/
+*.session-policy-*.bak
+.session-policy-*
