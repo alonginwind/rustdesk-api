@@ -124,7 +124,7 @@ func (l *Login) LoginOptions(c *gin.Context) {
 	if global.Config.App.WebSso {
 		ops = append(ops, model.OauthTypeWebauth)
 	}
-	var oidcItems []map[string]string
+	oidcItems := make([]map[string]string, 0, len(ops))
 	for _, v := range ops {
 		oidcItems = append(oidcItems, map[string]string{"name": v})
 	}

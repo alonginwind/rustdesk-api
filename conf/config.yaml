@@ -1,5 +1,6 @@
 lang: "zh-CN"
 app:
+  device-address-books: false # Deployment-wide opt-in; false preserves the original scheme.
   web-client: 1  # 1:启用 0:禁用
   register: false #是否开启注册
   register-status: 1 # 注册用户默认状态 1:启用 2:禁用

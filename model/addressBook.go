@@ -19,6 +19,8 @@ import "github.com/lejianwen/rustdesk-api/v2/model/custom_types"
 
 // AddressBook 有些字段是Personal才会上传的
 type AddressBook struct {
+	// Optional association; Id remains the native client's connection destination.
+	PeerRowId        uint                   `json:"peer_row_id" gorm:"default:0;not null;index"`
 	RowId            uint                   `gorm:"primaryKey" json:"row_id"`
 	Id               string                 `json:"id" gorm:"default:0;not null;index"`
 	Username         string                 `json:"username" gorm:"default:'';not null;"`
