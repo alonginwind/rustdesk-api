@@ -173,3 +173,11 @@ func TestSessionConfigDetectsExternalEdits(t *testing.T) {
 		t.Fatal("external edit lost")
 	}
 }
+
+func TestSessionExpiryPreservesExplicitNegativeDuration(t *testing.T) {
+	sessionConfigFixture(t, "app: {}\n")
+	Config.App.TokenExpire = -time.Hour
+	if (&UserService{}).UserTokenExpireTimestamp() >= time.Now().Unix() {
+		t.Fatal("explicitly expired policy was changed into a valid session")
+	}
+}

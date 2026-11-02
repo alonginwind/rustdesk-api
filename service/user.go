@@ -499,7 +499,7 @@ func (us *UserService) UserTokenLifetime() time.Duration {
 	if current := runtimeSessionLifetime.Load(); current > 0 {
 		return time.Duration(current)
 	}
-	if Config.App.TokenExpire > 0 {
+	if Config.App.TokenExpire != 0 {
 		return Config.App.TokenExpire
 	}
 	return 7 * 24 * time.Hour
