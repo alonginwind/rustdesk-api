@@ -5,16 +5,21 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/lejianwen/rustdesk-api/v2/global"
 	admin "github.com/lejianwen/rustdesk-api/v2/http/controller/admin"
+	"github.com/lejianwen/rustdesk-api/v2/model"
 	"github.com/lejianwen/rustdesk-api/v2/service"
 	"github.com/spf13/viper"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
 
 func sessionPolicyFixture(t *testing.T) string {
-	fixture(t)
+	oldServices := service.AllService
+	service.AllService = &service.Service{UserService: &service.UserService{}}
+	t.Cleanup(func() { service.AllService = oldServices })
 	oldViper, oldConfig, oldExpiry := global.Viper, service.Config, global.Config.App.TokenExpire
 	path := filepath.Join(t.TempDir(), "config.yaml")
 	if err := os.WriteFile(path, []byte("app:\n  token-expire: 24h\n  register: false\n"), 0600); err != nil {
@@ -39,13 +44,13 @@ func policyAdmin(c *gin.Context) {
 func TestSessionSettingsOnlyAdminCanReadOrSave(t *testing.T) {
 	sessionPolicyFixture(t)
 	for _, method := range []string{"GET", "POST"} {
-		r := call(t, 2, (&admin.Config{}).SessionPolicy, method, "/policy", `{"duration":"720h","is_admin":true}`)
+		r := policyCall(t, 2, (&admin.Config{}).SessionPolicy, method, "/policy", `{"duration":"720h","is_admin":true}`)
 		if r["code"] != float64(403) {
 			t.Fatalf("ordinary account accessed server configuration: %v", r)
 		}
 	}
-	r := call(t, 1, policyAdmin, "GET", "/policy", "")
-	success(t, r)
+	r := policyCall(t, 1, policyAdmin, "GET", "/policy", "")
+	policySuccess(t, r)
 	data := r["data"].(map[string]interface{})
 	if data["duration"] != "24h" {
 		t.Fatal("did not read actual YAML value")
@@ -54,16 +59,16 @@ func TestSessionSettingsOnlyAdminCanReadOrSave(t *testing.T) {
 
 func TestSessionSettingsSaveAndStaleRequest(t *testing.T) {
 	path := sessionPolicyFixture(t)
-	r := call(t, 1, policyAdmin, "GET", "/policy", "")
-	success(t, r)
+	r := policyCall(t, 1, policyAdmin, "GET", "/policy", "")
+	policySuccess(t, r)
 	revision := r["data"].(map[string]interface{})["revision"]
 	payload, _ := json.Marshal(map[string]interface{}{"duration": "720h", "revision": revision})
-	r = call(t, 1, policyAdmin, "POST", "/policy", string(payload))
-	success(t, r)
+	r = policyCall(t, 1, policyAdmin, "POST", "/policy", string(payload))
+	policySuccess(t, r)
 	if r["data"].(map[string]interface{})["duration"] != "720h" {
 		t.Fatal("saved setting not reflected")
 	}
-	r = call(t, 1, policyAdmin, "POST", "/policy", string(payload))
+	r = policyCall(t, 1, policyAdmin, "POST", "/policy", string(payload))
 	if r["code"] == float64(0) {
 		t.Fatal("stale settings form overwrote configuration")
 	}
@@ -71,8 +76,37 @@ func TestSessionSettingsSaveAndStaleRequest(t *testing.T) {
 		t.Fatal("configuration was lost")
 	}
 	for _, body := range []string{`{}`, `{"duration":"1h"}`, `{"duration":"0","revision":"stale"}`} {
-		if r := call(t, 1, policyAdmin, "POST", "/policy", body); r["code"] == float64(0) {
+		if r := policyCall(t, 1, policyAdmin, "POST", "/policy", body); r["code"] == float64(0) {
 			t.Fatal("invalid form accepted")
 		}
 	}
+}
+
+func policySuccess(t *testing.T, r map[string]interface{}) {
+	t.Helper()
+	if r["code"] != float64(0) {
+		t.Fatalf("response: %v", r)
+	}
+}
+
+func policyCall(t *testing.T, user uint, handler gin.HandlerFunc, method, path, body string) map[string]interface{} {
+	t.Helper()
+	r := gin.New()
+	r.Handle(method, path, func(c *gin.Context) {
+		no := false
+		c.Set("curUser", &model.User{IdModel: model.IdModel{Id: user}, IsAdmin: &no})
+		handler(c)
+	})
+	w := httptest.NewRecorder()
+	request := httptest.NewRequest(method, path, strings.NewReader(body))
+	request.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, request)
+	if w.Code != 200 {
+		t.Fatalf("HTTP %d", w.Code)
+	}
+	var result map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	return result
 }
