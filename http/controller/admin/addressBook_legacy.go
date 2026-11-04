@@ -93,7 +93,7 @@ func (ct *AddressBook) legacyBatchCreate(c *gin.Context) {
 		if t.UserId == 0 {
 			continue
 		}
-		key := fmt.Sprintf("%d_%s_%d", t.UserId, t.Id, t.CollectionId)
+		key := fmt.Sprintf("%s_%d", t.Id, t.CollectionId)
 		v, _ := global.AddressBookLockMap.LoadOrStore(key, &sync.Mutex{})
 		mu := v.(*sync.Mutex)
 
@@ -101,7 +101,7 @@ func (ct *AddressBook) legacyBatchCreate(c *gin.Context) {
 		ex := service.AllService.AddressBookService.InfoByUserIdAndIdAndCid(t.UserId, t.Id, t.CollectionId)
 		if ex.RowId == 0 {
 			err := service.AllService.AddressBookService.Create(t)
-			if err == nil {
+			if err == nil && t.UserId == 1 {
 				service.AllService.AddressBookService.CleanUp(t.Id, t.CollectionId)
 			}
 		} else {

@@ -1,6 +1,7 @@
 lang: "zh-CN"
 app:
   device-address-books: false # Deployment-wide opt-in; false preserves the original scheme.
+  team-mode: false # legacy Team mode switch, true: enabled, false: disabled. When enabled, the web console can only add peers to the admin's address book. Forced off when device-address-books is enabled.
   web-client: 1  # 1:启用 0:禁用
   register: false #是否开启注册
   register-status: 1 # 注册用户默认状态 1:启用 2:禁用
@@ -12,7 +13,7 @@ app:
   disable-pwd-login: false #禁用密码登录
 
 admin:
-  title: "API"
+  title: "RustDesk API"
   hello-file: "./conf/admin/hello.html"  #优先使用file
   hello: ""
   # ID Server and Relay Server ports https://github.com/lejianwen/rustdesk-api/issues/257

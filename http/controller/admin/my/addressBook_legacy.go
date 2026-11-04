@@ -26,15 +26,19 @@ func (ct *AddressBook) legacyCreate(c *gin.Context) {
 		return
 	}
 	t := f.ToAddressBook()
-	// Legacy mode only adds to the admin shared address book: the owner is fixed to admin (1) and
-	// user_id from the request body is ignored.
-	t.UserId = 1
+	// Team mode shares the admin's collections across all members.
+	if global.Config.App.TeamMode {
+		t.UserId = 1
+	} else {
+		u := service.AllService.UserService.CurUser(c)
+		t.UserId = u.Id
+	}
 	if t.CollectionId > 0 && !service.AllService.AddressBookService.CheckCollectionOwner(t.UserId, t.CollectionId) {
 		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError"))
 		return
 	}
 
-	key := fmt.Sprintf("%d_%s_%d", t.UserId, t.Id, t.CollectionId)
+	key := fmt.Sprintf("%s_%d", t.Id, t.CollectionId)
 	v, _ := global.AddressBookLockMap.LoadOrStore(key, &sync.Mutex{})
 	mu := v.(*sync.Mutex)
 
