@@ -78,6 +78,10 @@ func Init(rowVal *Config, path string) *viper.Viper {
 	v.SetEnvPrefix("RUSTDESK_API")
 	// A registered default also makes env-only opt-in visible to Unmarshal.
 	v.SetDefault("app.device-address-books", false)
+	// An older config.yaml lacks these, and their zero values break logins.
+	// Don't default from conf/config.yaml: much of it is placeholders.
+	v.SetDefault("app.captcha-threshold", 3)
+	v.SetDefault("app.token-expire", "168h")
 	v.SetDefault("app.team-mode", false)
 	v.SetConfigFile(path)
 	v.SetConfigType("yaml")
