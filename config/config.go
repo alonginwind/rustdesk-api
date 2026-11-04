@@ -22,6 +22,7 @@ type App struct {
 	TokenExpire        time.Duration `mapstructure:"token-expire"`
 	WebSso             bool          `mapstructure:"web-sso"`
 	DisablePwdLogin    bool          `mapstructure:"disable-pwd-login"`
+	TeamMode           bool          `mapstructure:"team-mode"`
 	CaptchaThreshold   int           `mapstructure:"captcha-threshold"`
 	BanThreshold       int           `mapstructure:"ban-threshold"`
 }
@@ -59,6 +60,13 @@ func (a *Admin) Init() {
 	}
 }
 
+func (a *App) Init() {
+	// The new address book scheme owns per-member books, so team mode only applies to the legacy scheme.
+	if a.DeviceAddressBooks {
+		a.TeamMode = false
+	}
+}
+
 // Init 初始化配置
 func Init(rowVal *Config, path string) *viper.Viper {
 	if path == "" {
@@ -74,6 +82,7 @@ func Init(rowVal *Config, path string) *viper.Viper {
 	// Don't default from conf/config.yaml: much of it is placeholders.
 	v.SetDefault("app.captcha-threshold", 3)
 	v.SetDefault("app.token-expire", "168h")
+	v.SetDefault("app.team-mode", false)
 	v.SetConfigFile(path)
 	v.SetConfigType("yaml")
 	err := v.ReadInConfig()
@@ -99,6 +108,7 @@ func Init(rowVal *Config, path string) *viper.Viper {
 		panic(fmt.Errorf("Fatal error config: %s \n", err))
 	}
 	rowVal.Rustdesk.LoadKeyFile()
+	rowVal.App.Init()
 	rowVal.Admin.Init()
 	return v
 }
