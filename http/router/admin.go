@@ -248,6 +248,8 @@ func ConfigBind(rg *gin.RouterGroup) {
 	aR.Use(middleware.BackendUserAuth())
 	aR.GET("/server", rs.ServerConfig)
 	aR.GET("/app", rs.AppConfig)
+	aR.GET("/session-policy", rs.SessionPolicy)
+	aR.POST("/session-policy", rs.SessionPolicy)
 
 }
 
