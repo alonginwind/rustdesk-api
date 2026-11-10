@@ -43,6 +43,9 @@
   <script src="fzstd.js"></script>
   <!-- Peer sharing: resolves share_token and redirects before Flutter loads. -->
   <script src="share.js"></script>
+  <!-- Keeps IME compositions alive in the terminal; must be installed before Flutter registers
+       its own text input handlers. See input_fix.js. -->
+  <script src="input_fix.js"></script>
   <script type="module" src="load_bridge.js"></script>
   <script src="flutter_bootstrap.js" defer></script>
 </body>
