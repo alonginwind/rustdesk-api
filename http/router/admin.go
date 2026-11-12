@@ -160,6 +160,8 @@ func PeerBind(rg *gin.RouterGroup) {
 	{
 		cont := &admin.Peer{}
 		aR.GET("/list", cont.List)
+		// 警告信息：别名一致的设备
+		aR.GET("/duplicateAlias", cont.DuplicateAlias)
 		aR.GET("/detail/:id", cont.Detail)
 		aR.POST("/create", cont.Create)
 		aR.POST("/update", cont.Update)

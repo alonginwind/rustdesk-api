@@ -168,6 +168,21 @@ func (ps *PeerService) ListFilterByUserId(page, pageSize uint, where func(tx *go
 	return ps.List(page, pageSize, "alias", userWhere)
 }
 
+// ListDuplicateAlias lists peers whose non-empty alias is shared by more than one
+// device. Duplicates are detected across all devices and all address books.
+func (ps *PeerService) ListDuplicateAlias(page, pageSize uint) (res *model.PeerList) {
+	res = &model.PeerList{}
+	res.Page = int64(page)
+	res.PageSize = int64(pageSize)
+	duplicated := DB.Model(&model.Peer{}).Select("alias").Where("alias <> ''").
+		Group("alias").Having("COUNT(*) > 1")
+	tx := DB.Model(&model.Peer{}).Where("alias <> ''").Where("alias IN (?)", duplicated)
+	tx.Count(&res.Total)
+	tx = tx.Order("alias ASC").Order("row_id ASC").Scopes(Paginate(page, pageSize))
+	tx.Find(&res.Peers)
+	return
+}
+
 // Create 创建
 func (ps *PeerService) Create(u *model.Peer) error {
 	res := DB.Create(u).Error

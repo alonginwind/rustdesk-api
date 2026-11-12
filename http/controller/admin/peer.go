@@ -140,6 +140,28 @@ func (ct *Peer) List(c *gin.Context) {
 	response.Success(c, res)
 }
 
+// DuplicateAlias 别名重复设备列表
+// @Tags 设备
+// @Summary 别名重复设备列表
+// @Description 警告信息：peers 表中别名一致（被多台设备使用）的设备列表
+// @Accept  json
+// @Produce  json
+// @Param page query int false "页码"
+// @Param page_size query int false "页大小"
+// @Success 200 {object} response.Response{data=model.PeerList}
+// @Failure 500 {object} response.Response
+// @Router /admin/peer/duplicateAlias [get]
+// @Security token
+func (ct *Peer) DuplicateAlias(c *gin.Context) {
+	query := &admin.PageQuery{}
+	if err := c.ShouldBindQuery(query); err != nil {
+		response.Fail(c, 101, response.TranslateMsg(c, "ParamsError")+err.Error())
+		return
+	}
+	res := service.AllService.PeerService.ListDuplicateAlias(query.Page, query.PageSize)
+	response.Success(c, res)
+}
+
 // Update 编辑
 // @Tags 设备
 // @Summary 设备编辑
