@@ -254,6 +254,8 @@ POST /admin/peer_strategy/default/update
 | `enable-check-update` | 启用检查更新 | `Y`, `N` |
 
 > **注意**：`enable-trusted-devices` 与 `trusted-device-expiration-days` 属于认证类配置，下发后被控端会走信任设备凭据更新路径：切换 `enable-trusted-devices`（或改变 `2fa` 配置）会吊销该设备上全部已信任设备，用户需重新完成二次验证；只改 `trusted-device-expiration-days` 时按新有效期重算已有信任记录的到期时间，不会吊销。
+>
+> **当前状态**：`2fa` / `enable-trusted-devices` / `trusted-device-expiration-days` 均在[客户端拦截清单](#7-客户端拦截清单)中，策略下发不会生效，因此上述吊销路径也不会被心跳触发；描述适用于用户在设置 UI 中修改，或后续放开拦截的情况。
 
 ### HARD_SETTINGS（自定义客户端硬配置）
 
@@ -375,6 +377,8 @@ POST /admin/peer_strategy/default/update
 
 ### 示例 5：配置服务器地址
 
+> 以下 key 均在[客户端拦截清单](#7-客户端拦截清单)中，通过策略下发会被客户端拒绝写入本地配置。示例仅保留作为字段格式参考；实际生效请通过自定义客户端 `HARD_SETTINGS` 或安装期注入。
+
 ```json
 {
   "config_options": {
@@ -396,6 +400,35 @@ POST /admin/peer_strategy/default/update
 4. **默认策略**：默认策略的 `peer_id` 为空，列表接口不会显示默认策略
 5. **设备策略唯一性**：每个设备只能有一条策略，重复创建会返回错误
 6. **移除 key 不等于恢复默认**：服务端只下发策略中存在的 key，从策略里删掉某个 key、或删除整条设备策略/默认策略，客户端都不会主动清除本地已应用的值。要回退需把该 key 的值设为空字符串（按第 3 条规则回退内置默认）再下发一次
+
+### 7. 客户端拦截清单
+
+心跳响应本身不做内容签名，客户端信任完全押在 TLS 层。以下 key 一旦被伪造的响应改写会破坏信任根、绕过认证或导致数据外泄，因此客户端（`src/hbbs_http/sync.rs` 的 `BLOCKED_CONFIG_OPTIONS`）会拒绝合并，即使服务端下发也不生效。表格中出现这些 key 的分类仍保留条目，供字段列表管理和展示使用，但消费侧被拦截。
+
+| 配置项 | 拦截原因 |
+|--------|----------|
+| `custom-rendezvous-server` | hbbs host 属于信任根，改写等于把被控端交给另一台服务器 |
+| `rendezvous-servers` | 同上，旧版多服务器列表 |
+| `api-server` | 改写后 attacker 就是"合法服务端"，后续所有策略都可下发 |
+| `relay-server` | 会话流量走 attacker 中继 |
+| `key` | 中继握手密钥，替换后可解密会话 / 伪造设备身份 |
+| `ice-servers` | WebRTC STUN/TURN 走 attacker |
+| `allow-insecure-tls-fallback` | 翻为 `Y` 后 TLS 校验接受任意证书，等于放弃传输层信任 |
+| `websocket-port` | 与 host 组合可把 ws 流量指向 attacker 监听端口 |
+| `2fa` | 二次验证开关，改写等于绕过认证 |
+| `preset-address-book-password` | 加密地址簿的口令 |
+| `enable-trusted-devices` | 关闭会吊销已信任设备；开启配合过期天数 = 0 可永久免 2FA |
+| `trusted-device-expiration-days` | `0` 意味着信任设备永不过期 |
+| `preset-address-book-tag` | 元数据，可被用于误导主控端分组/筛选 |
+| `preset-address-book-note` | 同上 |
+| `preset-note` | 同上 |
+| `windows-service-video-save-directory` | 会话录像写入目录，可被用于外泄录像 |
+| `reset-pwd` | 一次性命令，peer 通道由客户端在合并前主动消费；列入清单是给主控端策略路径兜底丢弃 |
+| `bot` | `auth_2fa` 内部字段，非策略项 |
+| `stop-service` | 运维指令，等同于远端停机 |
+| `reg_recovery` | Windows 注册表恢复项，非策略字段 |
+
+> 本文档正文中同分类下未列在上表的 key（如 `preset-address-book-name` / `preset-address-book-alias` / `preset-device-name` / `preset-device-username` / `allow-websocket`）当前可由心跳策略生效；其余 key 未在拦截清单中，均可正常下发。
 
 ---
 
